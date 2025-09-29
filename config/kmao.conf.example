@@ -1,0 +1,13 @@
+# Configuração do KMAO Activity Logger
+
+# Intervalo de sampling para movimento do mouse (ms)
+MOUSE_SAMPLING_INTERVAL=200
+
+# Duração máxima da gravação em minutos
+# 480 = 8 horas de trabalho
+# 0 = gravação ilimitada (até interrupção manual)
+RECORDING_DURATION_MINUTES=480
+
+# Configurações futuras podem ser adicionadas aqui
+# BUFFER_SIZE=1000
+# LOG_LEVEL=INFO
