@@ -1,6 +1,6 @@
 # autoclicker.ps1
-# Move o cursor para uma posição aleatória DENTRO de um retângulo central
-# a cada intervalo aleatório (30s..4min), faz clique esquerdo e digita uma frase aleatória.
+# Moves cursor to a random position INSIDE a central rectangle
+# at random intervals (30s..4min), performs left click and types a random phrase.
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -80,35 +80,35 @@ $phrases = @(
     "We're building the future of work. (With temporary contracts and Teams login at 10 PM.)"
 )
 
-# Obter resolução da tela primária
+# Get primary screen resolution
 $screenBounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
 $screenWidth = $screenBounds.Width
 $screenHeight = $screenBounds.Height
 
-# --- CONFIGURACAO DO RETANGULO CENTRAL ---
-# Largura e altura do retangulo (em pixels)
-$rectWidth  = 400   # ajuste aqui (ex.: 400)
-$rectHeight = 200   # ajuste aqui (ex.: 200)
+# --- CENTRAL RECTANGLE CONFIGURATION ---
+# Rectangle width and height (in pixels)
+$rectWidth  = 400   # adjust here (e.g.: 400)
+$rectHeight = 200   # adjust here (e.g.: 200)
 
-# calcula o canto superior-esquerdo do retangulo central
+# Calculate top-left corner of central rectangle
 $rectLeft = [int](([double]$screenWidth - [double]$rectWidth) / 2)
 $rectTop  = [int](([double]$screenHeight - [double]$rectHeight) / 2)
 
-Write-Host "Autoclicker iniciado."
-Write-Host "Resolução detectada: ${screenWidth}x${screenHeight}"
-Write-Host "Retangulo central: largura=${rectWidth}, altura=${rectHeight}"
-Write-Host "Coordenadas do retangulo: left=$rectLeft, top=$rectTop"
-Write-Host "Pressione Ctrl+C nesta janela para interromper."
+Write-Host "Initialized."
+Write-Host "Current resolution: ${screenWidth}x${screenHeight}"
+Write-Host "Center square: width=${rectWidth}, height=${rectHeight}"
+Write-Host "Rect coordinaties: left=$rectLeft, top=$rectTop"
+Write-Host "Press Ctrl+C to interrupt."
 
 while ($true) {
     # More humanized random interval between 30 seconds and 4 minutes
     $seconds = Get-Random -Minimum 30 -Maximum 240
-    Write-Host "$(Get-Date -Format 'HH:mm:ss') - Dormindo por $seconds segundos..."
+    Write-Host "$(Get-Date -Format 'HH:mm:ss') - Sleeping for $seconds seconds..."
     Start-Sleep -Seconds $seconds
 
     # Sometimes do multiple clicks (1-3) to simulate human behavior
     $numClicks = Get-Random -Minimum 1 -Maximum 4
-    Write-Host "$(Get-Date -Format 'HH:mm:ss') - Realizando $numClicks clique(s)..."
+    Write-Host "$(Get-Date -Format 'HH:mm:ss') - Performing $numClicks click(s)..."
     
     for ($i = 1; $i -le $numClicks; $i++) {
         # Choose a random position within the central rectangle
@@ -124,7 +124,7 @@ while ($true) {
         Start-Sleep -Milliseconds (Get-Random -Minimum 50 -Maximum 100)
         [Win32]::mouse_event($MOUSEEVENTF_LEFTUP, [uint32]$x, [uint32]$y, 0, [UIntPtr]::Zero)
         
-        Write-Host "  Clique $i em ($x,$y) realizado."
+        Write-Host "  Click $i at ($x,$y) performed."
         
         # Small delay between multiple clicks
         if ($i -lt $numClicks) {
@@ -139,7 +139,7 @@ while ($true) {
         
         # Type a random phrase in humanized way
         $phrase = $phrases | Get-Random
-        Write-Host ("Iniciando digitação: """ + $phrase + """")
+        Write-Host ("Typing: """ + $phrase + """")
         
         # Use humanized typing function
         Type-HumanLike -text $phrase
@@ -148,9 +148,9 @@ while ($true) {
         Start-Sleep -Milliseconds (Get-Random -Minimum 200 -Maximum 600)
         [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
 
-        Write-Host ("Digitação concluída: """ + $phrase + """")
+        Write-Host ("Typing concluded: """ + $phrase + """")
     } else {
-        Write-Host "Pulando digitação desta vez (comportamento humanizado)."
+        Write-Host "Skipping typing this time (humanized behavior)."
     }
     
     # Final pause with some variation
