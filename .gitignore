@@ -111,3 +111,10 @@ $RECYCLE.BIN/
 *.DS_Store
 *.swp
 *.swo
+
+# Legacy local recordings and configuration (now stored in the user profile)
+data/
+config/kmao.conf
+
+# Generated portable packages
+dist/

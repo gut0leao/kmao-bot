@@ -1,0 +1,81 @@
+# KMAO bot configuration. Maximum random bounds are exclusive.
+# Minimum time between cycles
+MIN_INTERVAL=30
+
+# Maximum time between cycles (4 minutes)
+MAX_INTERVAL=240
+
+# Width of the central clicking rectangle
+RECT_WIDTH=400
+
+# Height of the central clicking rectangle
+RECT_HEIGHT=200
+
+# Minimum number of clicks per cycle
+MIN_CLICKS=1
+
+# Maximum number of clicks per cycle (exclusive)
+MAX_CLICKS=4
+
+# Percentage chance to type a phrase (0-100)
+TYPING_CHANCE=70
+
+# Minimum idle time in seconds before bot activates
+IDLE_TIME_THRESHOLD=60
+
+# Minimum delay between characters
+MIN_CHAR_DELAY=40
+
+# Maximum delay between characters
+MAX_CHAR_DELAY=200
+
+# Percentage chance for thinking pause
+HESITATION_CHANCE=8
+
+# Minimum hesitation pause
+MIN_HESITATION=300
+
+# Maximum hesitation pause
+MAX_HESITATION=800
+
+# Minimum delay for spaces
+SPACE_MIN_DELAY=30
+
+# Maximum delay for spaces
+SPACE_MAX_DELAY=120
+
+# Minimum extra delay for punctuation
+PUNCT_MIN_DELAY=50
+
+# Maximum extra delay for punctuation
+PUNCT_MAX_DELAY=150
+
+# Minimum delay after moving cursor
+CURSOR_MIN_DELAY=80
+
+# Maximum delay after moving cursor
+CURSOR_MAX_DELAY=200
+
+# Minimum delay between multiple clicks
+MULTI_CLICK_MIN_DELAY=200
+
+# Maximum delay between multiple clicks
+MULTI_CLICK_MAX_DELAY=500
+
+# Minimum delay before starting to type
+PRE_TYPING_MIN_DELAY=500
+
+# Maximum delay before starting to type
+PRE_TYPING_MAX_DELAY=1500
+
+# Minimum delay before pressing Enter
+PRE_ENTER_MIN_DELAY=200
+
+# Maximum delay before pressing Enter
+PRE_ENTER_MAX_DELAY=600
+
+# Minimum final pause after cycle
+FINAL_MIN_DELAY=200
+
+# Maximum final pause after cycle
+FINAL_MAX_DELAY=800

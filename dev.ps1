@@ -1,241 +1,198 @@
-# autoclicker.ps1
-# Moves cursor to a random position INSIDE a central rectangle
-# at random intervals (30s..4min), performs left click and types a random phrase.
-
-# ===== CONFIGURATION VARIABLES =====
-# Timing intervals (in seconds)
-$MIN_INTERVAL = 30          # Minimum time between cycles
-$MAX_INTERVAL = 240         # Maximum time between cycles (4 minutes)
-
-# Click area configuration (in pixels)
-$RECT_WIDTH = 400           # Width of the central clicking rectangle
-$RECT_HEIGHT = 200          # Height of the central clicking rectangle
-
-# Click behavior
-$MIN_CLICKS = 1             # Minimum number of clicks per cycle
-$MAX_CLICKS = 4             # Maximum number of clicks per cycle (exclusive)
-
-# Typing behavior
-$TYPING_CHANCE = 70         # Percentage chance to type a phrase (0-100)
-
-# Idle detection configuration
-$IDLE_TIME_THRESHOLD = 60   # Minimum idle time in seconds before bot activates
-
-# Typing speed configuration (in milliseconds)
-$MIN_CHAR_DELAY = 40        # Minimum delay between characters
-$MAX_CHAR_DELAY = 200       # Maximum delay between characters
-$HESITATION_CHANCE = 8      # Percentage chance for thinking pause
-$MIN_HESITATION = 300       # Minimum hesitation pause
-$MAX_HESITATION = 800       # Maximum hesitation pause
-$SPACE_MIN_DELAY = 30       # Minimum delay for spaces
-$SPACE_MAX_DELAY = 120      # Maximum delay for spaces
-$PUNCT_MIN_DELAY = 50       # Minimum extra delay for punctuation
-$PUNCT_MAX_DELAY = 150      # Maximum extra delay for punctuation
-
-# Mouse timing configuration (in milliseconds)
-$CURSOR_MIN_DELAY = 80      # Minimum delay after moving cursor
-$CURSOR_MAX_DELAY = 200     # Maximum delay after moving cursor
-$CLICK_MIN_DELAY = 50       # Minimum delay between mouse down/up
-$CLICK_MAX_DELAY = 100      # Maximum delay between mouse down/up
-$MULTI_CLICK_MIN_DELAY = 200 # Minimum delay between multiple clicks
-$MULTI_CLICK_MAX_DELAY = 500 # Maximum delay between multiple clicks
-
-# Pre-typing delays (in milliseconds)
-$PRE_TYPING_MIN_DELAY = 500  # Minimum delay before starting to type
-$PRE_TYPING_MAX_DELAY = 1500 # Maximum delay before starting to type
-$PRE_ENTER_MIN_DELAY = 200   # Minimum delay before pressing Enter
-$PRE_ENTER_MAX_DELAY = 600   # Maximum delay before pressing Enter
-$FINAL_MIN_DELAY = 200       # Minimum final pause after cycle
-$FINAL_MAX_DELAY = 800       # Maximum final pause after cycle
-# Phrases configuration
-$PHRASES_FILE = "phrases.txt"       # File containing phrases to type (one per line)
-
-# =====================================
-
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-
-$src = @"
-using System;
-using System.Runtime.InteropServices;
-public class Win32 {
-    [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
-    [DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
-    [DllImport("user32.dll")] public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
-    
-    public struct LASTINPUTINFO {
-        public uint cbSize;
-        public uint dwTime;
-    }
-    
-    [DllImport("kernel32.dll")] public static extern uint GetTickCount();
+# KMAO automation. All writable files live in the current user's profile.
+$ErrorActionPreference = 'Stop'
+# Validate the package before loading shared code; diagnostics are unavailable at this stage.
+$missingFiles = @(@('lib/Kmao.Common.ps1', 'lib/Kmao.Windows.cs', 'config/bot.conf.example', 'phrases.txt') | Where-Object {
+    !(Test-Path -LiteralPath (Join-Path $PSScriptRoot $_) -PathType Leaf)
+})
+if ($missingFiles.Count -gt 0) {
+    Write-Error ("Incomplete KMAO package. Missing: {0}. Copy the entire portable package, including lib and config. No application log was created." -f ($missingFiles -join ', ')) -ErrorAction Continue
+    exit 1
 }
-"@
-Add-Type $src
+. (Join-Path $PSScriptRoot 'lib/Kmao.Common.ps1')
 
-$MOUSEEVENTF_LEFTDOWN = 0x0002
-$MOUSEEVENTF_LEFTUP   = 0x0004
+function Get-BotWindow { return [Kmao.WindowsInput]::ForegroundWindow }
 
-# Load phrases from external file
-function Load-Phrases {
-    param([string]$filePath)
-    
-    if (Test-Path $filePath) {
-        $phrases = Get-Content $filePath | Where-Object { $_.Trim() -ne "" }
-        Write-Host "Loaded $($phrases.Count) phrases from $filePath"
-        return $phrases
-    } else {
-        Write-Host "Warning: Phrases file '$filePath' not found. Using default phrase."
-        return @("Default phrase - phrases.txt file not found")
+function Assert-CycleActive {
+    if (!$script:monitor.IsCurrent($script:cycleGeneration, $script:targetWindow)) {
+        throw [OperationCanceledException]::new('User activity or foreground window change detected.')
     }
 }
 
-# Function to get idle time in seconds
-function Get-IdleTime {
-    $lastInputInfo = New-Object Win32+LASTINPUTINFO
-    $lastInputInfo.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf($lastInputInfo)
-    
-    if ([Win32]::GetLastInputInfo([ref]$lastInputInfo)) {
-        $currentTickCount = [Win32]::GetTickCount()
-        $idleTimeMs = $currentTickCount - $lastInputInfo.dwTime
-        return [math]::Floor($idleTimeMs / 1000)
-    } else {
-        Write-Host "Warning: Could not get idle time. Assuming system is not idle."
-        return 0
-    }
+function Wait-Cycle {
+    param([int]$Milliseconds)
+    $timer = [Diagnostics.Stopwatch]::StartNew()
+    do {
+        Assert-CycleActive
+        $remaining = $Milliseconds - $timer.ElapsedMilliseconds
+        if ($remaining -gt 0) { Start-Sleep -Milliseconds ([int][Math]::Min(25, $remaining)) }
+    } while ($timer.ElapsedMilliseconds -lt $Milliseconds)
+    Assert-CycleActive
 }
 
-# Function for humanized typing
-function Type-HumanLike {
-    param([string]$text)
-    
-    foreach ($char in $text.ToCharArray()) {
-        # Variable typing speed
-        $delay = Get-Random -Minimum $MIN_CHAR_DELAY -Maximum $MAX_CHAR_DELAY
-        
-        # Occasional longer pause (simulates thinking/hesitation)
-        if ((Get-Random -Minimum 1 -Maximum 100) -le $HESITATION_CHANCE) {
-            $delay += Get-Random -Minimum $MIN_HESITATION -Maximum $MAX_HESITATION
-        }
-        
-        # For spaces, use slightly shorter pause
-        if ($char -eq ' ') {
-            $delay = Get-Random -Minimum $SPACE_MIN_DELAY -Maximum $SPACE_MAX_DELAY
-        }
-        
-        # For punctuation, add small extra pause
-        if ($char -match '[.,;:!?()\-"]') {
-            $delay += Get-Random -Minimum $PUNCT_MIN_DELAY -Maximum $PUNCT_MAX_DELAY
-        }
-        
-        # Escape special SendKeys characters
-        $charToSend = $char.ToString()
-        switch ($char) {
-            '+' { $charToSend = '{+}' }
-            '^' { $charToSend = '{^}' }
-            '%' { $charToSend = '{%}' }
-            '~' { $charToSend = '{~}' }
-            '(' { $charToSend = '{(}' }
-            ')' { $charToSend = '{)}' }
-            '[' { $charToSend = '{[}' }
-            ']' { $charToSend = '{]}' }
-            '{' { $charToSend = '{{}' }
-            '}' { $charToSend = '{}}' }
-        }
-        
-        [System.Windows.Forms.SendKeys]::SendWait($charToSend)
-        Start-Sleep -Milliseconds $delay
-    }
+function Get-Delay {
+    param([string]$Minimum, [string]$Maximum)
+    return Get-Random -Minimum $settings[$Minimum] -Maximum $settings[$Maximum]
 }
 
-# Load phrases from file
-$phrases = Load-Phrases -filePath $PHRASES_FILE
-
-# Get primary screen resolution
-$screenBounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-$screenWidth = $screenBounds.Width
-$screenHeight = $screenBounds.Height
-
-# --- CENTRAL RECTANGLE CONFIGURATION ---
-# Rectangle width and height (in pixels)
-$rectWidth  = $RECT_WIDTH
-$rectHeight = $RECT_HEIGHT
-
-# Calculate top-left corner of central rectangle
-$rectLeft = [int](([double]$screenWidth - [double]$rectWidth) / 2)
-$rectTop  = [int](([double]$screenHeight - [double]$rectHeight) / 2)
-
-Write-Host "Initialized."
-Write-Host "Current resolution: ${screenWidth}x${screenHeight}"
-Write-Host "Center square: width=${rectWidth}, height=${rectHeight}"
-Write-Host "Rect coordinaties: left=$rectLeft, top=$rectTop"
-Write-Host "Idle threshold: ${IDLE_TIME_THRESHOLD} seconds"
-Write-Host "Press Ctrl+C to interrupt."
-
-while ($true) {
-    # Check if system has been idle long enough
-    $idleTime = Get-IdleTime
-    
-    if ($idleTime -lt $IDLE_TIME_THRESHOLD) {
-        Write-Host "$(Get-Date -Format 'HH:mm:ss') - System active (idle: ${idleTime}s, need: ${IDLE_TIME_THRESHOLD}s). Waiting..."
-        Start-Sleep -Seconds 5  # Check again in 5 seconds
-        continue
+function Invoke-BotCycle {
+    $script:cycleGeneration = $monitor.Generation
+    $script:targetWindow = Get-BotWindow
+    if ($script:targetWindow -eq [IntPtr]::Zero) { throw [OperationCanceledException]::new('No foreground window.') }
+    # Recheck after taking the generation snapshot: activity between the outer idle check
+    # and this point must not become the baseline of a new cycle.
+    if ($monitor.IdleSeconds -lt $settings.IDLE_TIME_THRESHOLD) {
+        throw [OperationCanceledException]::new('User activity detected before cycle startup.')
     }
-    
-    Write-Host "$(Get-Date -Format 'HH:mm:ss') - System idle for ${idleTime}s. Starting activity..."
-    
-    # More humanized random interval
-    $seconds = Get-Random -Minimum $MIN_INTERVAL -Maximum $MAX_INTERVAL
-    Write-Host "$(Get-Date -Format 'HH:mm:ss') - Sleeping for $seconds seconds..."
-    Start-Sleep -Seconds $seconds
-
-    # Sometimes do multiple clicks to simulate human behavior
-    $numClicks = Get-Random -Minimum $MIN_CLICKS -Maximum $MAX_CLICKS
-    Write-Host "$(Get-Date -Format 'HH:mm:ss') - Performing $numClicks click(s)..."
-    
-    for ($i = 1; $i -le $numClicks; $i++) {
-        # Choose a random position within the central rectangle
-        $x = Get-Random -Minimum $rectLeft -Maximum ($rectLeft + $rectWidth)
-        $y = Get-Random -Minimum $rectTop  -Maximum ($rectTop  + $rectHeight)
-
-        # Move cursor with slight humanized delay
-        [Win32]::SetCursorPos([int]$x, [int]$y)
-        Start-Sleep -Milliseconds (Get-Random -Minimum $CURSOR_MIN_DELAY -Maximum $CURSOR_MAX_DELAY)
-
-        # Perform click with humanized timing
-        [Win32]::mouse_event($MOUSEEVENTF_LEFTDOWN, [uint32]$x, [uint32]$y, 0, [UIntPtr]::Zero)
-        Start-Sleep -Milliseconds (Get-Random -Minimum $CLICK_MIN_DELAY -Maximum $CLICK_MAX_DELAY)
-        [Win32]::mouse_event($MOUSEEVENTF_LEFTUP, [uint32]$x, [uint32]$y, 0, [UIntPtr]::Zero)
-        
-        Write-Host "  Click $i at ($x,$y) performed."
-        
-        # Small delay between multiple clicks
-        if ($i -lt $numClicks) {
-            Start-Sleep -Milliseconds (Get-Random -Minimum $MULTI_CLICK_MIN_DELAY -Maximum $MULTI_CLICK_MAX_DELAY)
-        }
+    Wait-Cycle ((Get-Delay MIN_INTERVAL MAX_INTERVAL) * 1000)
+    $clicks = Get-Delay MIN_CLICKS MAX_CLICKS
+    for ($i = 0; $i -lt $clicks; $i++) {
+        Assert-CycleActive
+        $x = Get-Random -Minimum $rectLeft -Maximum ($rectLeft + $settings.RECT_WIDTH)
+        $y = Get-Random -Minimum $rectTop -Maximum ($rectTop + $settings.RECT_HEIGHT)
+        if (!$monitor.Move($cycleGeneration, $x, $y)) { throw [OperationCanceledException]::new('User activity detected.') }
+        Wait-Cycle (Get-Delay CURSOR_MIN_DELAY CURSOR_MAX_DELAY)
+        if (!$monitor.Click($cycleGeneration, $targetWindow)) { throw [OperationCanceledException]::new('User activity or window change detected.') }
+        # A bot click may legitimately activate a new window. Physical input is still
+        # tracked independently; subsequent typing is bound to this foreground window.
+        $script:targetWindow = Get-BotWindow
+        if ($targetWindow -eq [IntPtr]::Zero) { throw [OperationCanceledException]::new('No foreground window after click.') }
+        Wait-Cycle (Get-Delay MULTI_CLICK_MIN_DELAY MULTI_CLICK_MAX_DELAY)
     }
-
-    # Random chance to type a phrase
-    if ((Get-Random -Minimum 1 -Maximum 100) -le $TYPING_CHANCE) {
-        # Random delay before typing (simulates reading/thinking)
-        Start-Sleep -Milliseconds (Get-Random -Minimum $PRE_TYPING_MIN_DELAY -Maximum $PRE_TYPING_MAX_DELAY)
-        
-        # Type a random phrase in humanized way
+    if ((Get-Random -Minimum 0 -Maximum 100) -lt $settings.TYPING_CHANCE) {
+        Wait-Cycle (Get-Delay PRE_TYPING_MIN_DELAY PRE_TYPING_MAX_DELAY)
         $phrase = $phrases | Get-Random
-        Write-Host ("Typing: """ + $phrase + """")
-        
-        # Use humanized typing function
-        Type-HumanLike -text $phrase
-        
-        # Pause before Enter (simulates text review)
-        Start-Sleep -Milliseconds (Get-Random -Minimum $PRE_ENTER_MIN_DELAY -Maximum $PRE_ENTER_MAX_DELAY)
-        [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-
-        Write-Host ("Typing concluded: """ + $phrase + """")
-    } else {
-        Write-Host "Skipping typing this time (humanized behavior)."
+        foreach ($character in $phrase.ToCharArray()) {
+            Assert-CycleActive
+            if (!$monitor.TypeCharacter($cycleGeneration, $targetWindow, $character)) {
+                throw [OperationCanceledException]::new('User activity or window change detected.')
+            }
+            $delay = Get-Delay MIN_CHAR_DELAY MAX_CHAR_DELAY
+            if ((Get-Random -Minimum 0 -Maximum 100) -lt $settings.HESITATION_CHANCE) {
+                $delay += Get-Delay MIN_HESITATION MAX_HESITATION
+            }
+            if ($character -eq ' ') { $delay = Get-Delay SPACE_MIN_DELAY SPACE_MAX_DELAY }
+            if ($character -match '[.,;:!?()\-"]') { $delay += Get-Delay PUNCT_MIN_DELAY PUNCT_MAX_DELAY }
+            Wait-Cycle $delay
+        }
+        Wait-Cycle (Get-Delay PRE_ENTER_MIN_DELAY PRE_ENTER_MAX_DELAY)
+        if (!$monitor.Enter($cycleGeneration, $targetWindow)) { throw [OperationCanceledException]::new('User activity or window change detected before Enter.') }
+        # Operational logs intentionally do not contain typed phrases.
+        Write-KmaoLog INFO 'Typing completed.'
     }
-    
-    # Final pause with some variation
-    Start-Sleep -Milliseconds (Get-Random -Minimum $FINAL_MIN_DELAY -Maximum $FINAL_MAX_DELAY)
+    Wait-Cycle (Get-Delay FINAL_MIN_DELAY FINAL_MAX_DELAY)
 }
+
+$monitor = $null
+$failed = $false
+try {
+    Initialize-Kmao bot
+    Import-KmaoWindows
+    $configPath = Join-Path $KmaoRoot 'config/bot.conf'
+    Initialize-KmaoFile $configPath (Join-Path $PSScriptRoot 'config/bot.conf.example')
+    $defaults = @{
+        MIN_INTERVAL = 30
+        MAX_INTERVAL = 240
+        RECT_WIDTH = 400
+        RECT_HEIGHT = 200
+        MIN_CLICKS = 1
+        MAX_CLICKS = 4
+        TYPING_CHANCE = 70
+        IDLE_TIME_THRESHOLD = 60
+        MIN_CHAR_DELAY = 40
+        MAX_CHAR_DELAY = 200
+        HESITATION_CHANCE = 8
+        MIN_HESITATION = 300
+        MAX_HESITATION = 800
+        SPACE_MIN_DELAY = 30
+        SPACE_MAX_DELAY = 120
+        PUNCT_MIN_DELAY = 50
+        PUNCT_MAX_DELAY = 150
+        CURSOR_MIN_DELAY = 80
+        CURSOR_MAX_DELAY = 200
+        MULTI_CLICK_MIN_DELAY = 200
+        MULTI_CLICK_MAX_DELAY = 500
+        PRE_TYPING_MIN_DELAY = 500
+        PRE_TYPING_MAX_DELAY = 1500
+        PRE_ENTER_MIN_DELAY = 200
+        PRE_ENTER_MAX_DELAY = 600
+        FINAL_MIN_DELAY = 200
+        FINAL_MAX_DELAY = 800
+    }
+    $ranges = @{
+        MIN_INTERVAL = @(1, 86400)
+        MAX_INTERVAL = @(1, 86400)
+        RECT_WIDTH = @(1, 32768)
+        RECT_HEIGHT = @(1, 32768)
+        MIN_CLICKS = @(1, 100)
+        MAX_CLICKS = @(1, 100)
+        TYPING_CHANCE = @(0, 100)
+        IDLE_TIME_THRESHOLD = @(1, 86400)
+        MIN_CHAR_DELAY = @(0, 60000)
+        MAX_CHAR_DELAY = @(0, 60000)
+        HESITATION_CHANCE = @(0, 100)
+        MIN_HESITATION = @(0, 60000)
+        MAX_HESITATION = @(0, 60000)
+        SPACE_MIN_DELAY = @(0, 60000)
+        SPACE_MAX_DELAY = @(0, 60000)
+        PUNCT_MIN_DELAY = @(0, 60000)
+        PUNCT_MAX_DELAY = @(0, 60000)
+        CURSOR_MIN_DELAY = @(0, 60000)
+        CURSOR_MAX_DELAY = @(0, 60000)
+        MULTI_CLICK_MIN_DELAY = @(0, 60000)
+        MULTI_CLICK_MAX_DELAY = @(0, 60000)
+        PRE_TYPING_MIN_DELAY = @(0, 60000)
+        PRE_TYPING_MAX_DELAY = @(0, 60000)
+        PRE_ENTER_MIN_DELAY = @(0, 60000)
+        PRE_ENTER_MAX_DELAY = @(0, 60000)
+        FINAL_MIN_DELAY = @(0, 60000)
+        FINAL_MAX_DELAY = @(0, 60000)
+    }
+    $settings = Read-KmaoConfig $configPath $defaults $ranges
+    foreach ($pair in @(
+        @('MIN_INTERVAL', 'MAX_INTERVAL'), @('MIN_CLICKS', 'MAX_CLICKS'),
+        @('MIN_CHAR_DELAY', 'MAX_CHAR_DELAY'), @('MIN_HESITATION', 'MAX_HESITATION'),
+        @('SPACE_MIN_DELAY', 'SPACE_MAX_DELAY'), @('PUNCT_MIN_DELAY', 'PUNCT_MAX_DELAY'),
+        @('CURSOR_MIN_DELAY', 'CURSOR_MAX_DELAY'),
+        @('MULTI_CLICK_MIN_DELAY', 'MULTI_CLICK_MAX_DELAY'), @('PRE_TYPING_MIN_DELAY', 'PRE_TYPING_MAX_DELAY'),
+        @('PRE_ENTER_MIN_DELAY', 'PRE_ENTER_MAX_DELAY'), @('FINAL_MIN_DELAY', 'FINAL_MAX_DELAY')
+    )) {
+        if ($settings[$pair[0]] -ge $settings[$pair[1]]) { throw "$($pair[0]) must be less than $($pair[1])." }
+    }
+    $phrasesPath = Join-Path $KmaoRoot 'phrases.txt'
+    Initialize-KmaoFile $phrasesPath (Join-Path $PSScriptRoot 'phrases.txt')
+    $phrases = @(Get-Content -LiteralPath $phrasesPath -Encoding UTF8 | Where-Object { ![string]::IsNullOrWhiteSpace($_) })
+    if ($phrases.Count -eq 0) { throw "Phrase file is empty: $phrasesPath" }
+    $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+    if ($settings.RECT_WIDTH -gt $bounds.Width -or $settings.RECT_HEIGHT -gt $bounds.Height) {
+        throw 'Click rectangle must fit inside the primary screen.'
+    }
+    $rectLeft = $bounds.Left + [int](($bounds.Width - $settings.RECT_WIDTH) / 2)
+    $rectTop = $bounds.Top + [int](($bounds.Height - $settings.RECT_HEIGHT) / 2)
+    $monitor = New-KmaoInput -RecordEvents $false -SamplingMilliseconds 200
+    Write-KmaoLog INFO 'Bot started. Press Ctrl+C to stop.'
+    while ($true) {
+        if ($monitor.IdleSeconds -lt $settings.IDLE_TIME_THRESHOLD -or [Kmao.WindowsInput]::ForegroundWindow -eq [IntPtr]::Zero) {
+            Start-Sleep -Milliseconds 100
+            continue
+        }
+        try { Invoke-BotCycle }
+        catch [OperationCanceledException] { Write-KmaoLog INFO "Cycle cancelled: $($_.Exception.Message)" }
+    }
+}
+catch {
+    $failed = $true
+    if ($script:KmaoLogFile) { Write-KmaoLog ERROR $_.Exception.ToString() }
+    Write-Error -ErrorRecord $_ -ErrorAction Continue
+}
+finally {
+    if ($null -ne $monitor) {
+        try { $monitor.Dispose() }
+        catch {
+            $failed = $true
+            Write-KmaoLog ERROR $_.Exception.ToString()
+            Write-Error -ErrorRecord $_ -ErrorAction Continue
+        }
+    }
+    if ($script:KmaoLogFile) { Write-KmaoLog INFO 'Bot stopped.' }
+}
+if ($failed) { exit 1 }

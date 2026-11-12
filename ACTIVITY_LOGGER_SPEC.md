@@ -1,5 +1,7 @@
 # Activity Logger - Especificação Técnica
 
+> Documento histórico do desenho inicial. Os caminhos, o ciclo de captura e o tratamento de erros evoluíram; consulte o [README](README.md) para o funcionamento atual.
+
 ## Visão Geral
 Sistema de logging de eventos de teclado e mouse para análise de produtividade pessoal, usando apenas ferramentas nativas do Windows 11.
 
