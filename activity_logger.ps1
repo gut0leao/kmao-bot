@@ -1,3 +1,4 @@
+param([string]$HealthToken)
 # KMAO activity recorder. Hook callbacks enqueue events; only this thread writes files.
 $ErrorActionPreference = 'Stop'
 # Validate the package before loading shared code; diagnostics are unavailable at this stage.
@@ -28,6 +29,7 @@ function Write-PendingEvents {
 }
 
 $recorder = $null
+$session = $null
 $writer = $null
 $failed = $false
 $eventCount = 0L
@@ -35,6 +37,7 @@ $pendingWrites = 0
 try {
     Initialize-Kmao logger
     Import-KmaoWindows
+    $session = Enter-KmaoSession -Component logger -HealthToken $HealthToken
     $configPath = Join-Path $KmaoRoot 'config/kmao.conf'
     Initialize-KmaoFile $configPath (Join-Path $PSScriptRoot 'config/kmao.conf.example')
     $config = Read-KmaoConfig $configPath @{
@@ -54,14 +57,15 @@ try {
     $writer.Flush()
     $flushTimer = [Diagnostics.Stopwatch]::StartNew()
     $recorder = New-KmaoInput -RecordEvents $true -SamplingMilliseconds $config.MOUSE_SAMPLING_INTERVAL
+    Set-KmaoReady $HealthToken
     $duration = [Diagnostics.Stopwatch]::StartNew()
     Write-KmaoLog INFO "Recording started: $logFile. Press Ctrl+C to stop."
-    while ($config.RECORDING_DURATION_MINUTES -eq 0 -or $duration.Elapsed.TotalMinutes -lt $config.RECORDING_DURATION_MINUTES) {
+    while (!(Test-KmaoStopRequested $session) -and ($config.RECORDING_DURATION_MINUTES -eq 0 -or $duration.Elapsed.TotalMinutes -lt $config.RECORDING_DURATION_MINUTES)) {
         $recorder.CheckHealth()
         Write-PendingEvents | Out-Null
         Start-Sleep -Milliseconds 25
     }
-    Write-KmaoLog INFO 'Recording duration reached.'
+    Write-KmaoLog INFO 'Recording loop finished (duration or shutdown request).'
 }
 catch {
     $failed = $true
@@ -97,6 +101,7 @@ finally {
             }
         }
     }
+    Exit-KmaoSession $session
     if ($script:KmaoLogFile) { Write-KmaoLog INFO "Recorder stopped. Events written: $eventCount. Failure: $failed" }
 }
 if ($failed) { exit 1 }

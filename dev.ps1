@@ -1,3 +1,4 @@
+param([string]$HealthToken)
 # KMAO automation. All writable files live in the current user's profile.
 $ErrorActionPreference = 'Stop'
 # Validate the package before loading shared code; diagnostics are unavailable at this stage.
@@ -13,6 +14,7 @@ if ($missingFiles.Count -gt 0) {
 function Get-BotWindow { return [Kmao.WindowsInput]::ForegroundWindow }
 
 function Assert-CycleActive {
+    if (Test-KmaoStopRequested $session) { throw [OperationCanceledException]::new('Update requested a clean shutdown.') }
     if (!$script:monitor.IsCurrent($script:cycleGeneration, $script:targetWindow)) {
         throw [OperationCanceledException]::new('User activity or foreground window change detected.')
     }
@@ -83,10 +85,12 @@ function Invoke-BotCycle {
 }
 
 $monitor = $null
+$session = $null
 $failed = $false
 try {
     Initialize-Kmao bot
     Import-KmaoWindows
+    $session = Enter-KmaoSession -Component bot -HealthToken $HealthToken
     $configPath = Join-Path $KmaoRoot 'config/bot.conf'
     Initialize-KmaoFile $configPath (Join-Path $PSScriptRoot 'config/bot.conf.example')
     $defaults = @{
@@ -169,8 +173,9 @@ try {
     $rectLeft = $bounds.Left + [int](($bounds.Width - $settings.RECT_WIDTH) / 2)
     $rectTop = $bounds.Top + [int](($bounds.Height - $settings.RECT_HEIGHT) / 2)
     $monitor = New-KmaoInput -RecordEvents $false -SamplingMilliseconds 200
+    Set-KmaoReady $HealthToken
     Write-KmaoLog INFO 'Bot started. Press Ctrl+C to stop.'
-    while ($true) {
+    while (!(Test-KmaoStopRequested $session)) {
         if ($monitor.IdleSeconds -lt $settings.IDLE_TIME_THRESHOLD -or [Kmao.WindowsInput]::ForegroundWindow -eq [IntPtr]::Zero) {
             Start-Sleep -Milliseconds 100
             continue
@@ -193,6 +198,7 @@ finally {
             Write-Error -ErrorRecord $_ -ErrorAction Continue
         }
     }
+    Exit-KmaoSession $session
     if ($script:KmaoLogFile) { Write-KmaoLog INFO 'Bot stopped.' }
 }
 if ($failed) { exit 1 }

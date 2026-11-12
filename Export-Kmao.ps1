@@ -4,9 +4,14 @@ param([string]$Destination = (Join-Path $PSScriptRoot 'dist/kmao-portable'))
 $ErrorActionPreference = 'Stop'
 
 $files = @(
+    'VERSION', 'CHANGELOG.md', 'Start-Kmao.ps1', 'Launch-Kmao.ps1', 'Apply-KmaoUpdate.ps1',
+    'lib/Kmao.Update.ps1',
     'dev.bat', 'dev.ps1', 'init_recording.bat', 'activity_logger.ps1',
     'lib/Kmao.Common.ps1', 'lib/Kmao.Windows.cs',
     'config/bot.conf.example', 'config/kmao.conf.example', 'phrases.txt',
+    'INSTALLATION.md',
+    'scripts/New-KmaoSigningKey.ps1', 'scripts/Build-KmaoRelease.ps1', 'installer/Kmao.iss',
+    'tests/Test-Updates.ps1', 'tests/Test-Lifecycle.ps1', 'tests/fixtures/SessionWorker.ps1',
     'README.md', 'ROADMAP.md', 'LICENSE', 'ACTIVITY_LOGGER_SPEC.md', 'Export-Kmao.ps1',
     'tests/Test-Core.ps1', 'tests/Test-Windows.ps1'
 )

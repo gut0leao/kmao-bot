@@ -1,0 +1,27 @@
+name: Validate
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  tests:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Core and update tests
+        shell: pwsh
+        run: |
+          ./tests/Test-Core.ps1
+          ./tests/Test-Updates.ps1
+          ./tests/Test-Lifecycle.ps1
+      - name: Windows PowerShell 5.1 compatibility
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          ./tests/Test-Core.ps1
+          ./tests/Test-Updates.ps1
+          ./tests/Test-Lifecycle.ps1

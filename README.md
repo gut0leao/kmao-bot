@@ -2,7 +2,9 @@
 
 O KMAO Bot reúne dois scripts PowerShell para Windows: um bot que simula atividade de mouse e teclado e um gravador de eventos para análise de uso do computador.
 
-O projeto é executado pelo terminal, com uma biblioteca C# compartilhada para as APIs do Windows. Ainda não há interface gráfica, integração com a bandeja do sistema ou instalador.
+O projeto usa scripts PowerShell e uma biblioteca C# para as APIs do Windows. Há empacotamento portátil, instalador por usuário e atualização com confirmação ao iniciar. Não há interface principal nem integração com a bandeja do sistema.
+
+Consulte o [guia de instalação e publicação](INSTALLATION.md) para gerar o instalador, configurar a assinatura e preparar as Releases. Nenhuma versão é publicada automaticamente.
 
 ## Requisitos
 
@@ -10,7 +12,7 @@ O projeto é executado pelo terminal, com uma biblioteca C# compartilhada para a
 - Assemblies .NET `System.Windows.Forms` e `System.Drawing` e APIs nativas `user32.dll` e `kernel32.dll`.
 - Permissão para executar scripts PowerShell. Os lançadores `.bat` usam `-ExecutionPolicy Bypass` para o processo iniciado.
 
-A biblioteca C# é compilada em memória por `Add-Type`; não é necessário instalar um compilador separado. Os scripts de aplicação não funcionam nativamente em Linux ou macOS.
+O instalador exige Windows PowerShell 5.1 disponível e instalação por usuário. A biblioteca C# é compilada em memória por `Add-Type`; não é necessário instalar um compilador separado. Os scripts de aplicação não funcionam nativamente em Linux ou macOS.
 
 ## Copiar para outro computador ou diretório
 
@@ -28,18 +30,23 @@ O comando cria `dist/kmao-portable/` e `dist/kmao-portable.zip`. Extraia **todo 
 C:\BACKUP_GUTO\dev\
 ├── dev.bat
 ├── dev.ps1
+├── Start-Kmao.ps1
+├── Launch-Kmao.ps1
+├── Apply-KmaoUpdate.ps1
+├── VERSION
 ├── activity_logger.ps1
 ├── init_recording.bat
 ├── phrases.txt
 ├── lib\
 │   ├── Kmao.Common.ps1
-│   └── Kmao.Windows.cs
+│   ├── Kmao.Windows.cs
+│   └── Kmao.Update.ps1
 └── config\
     ├── bot.conf.example
     └── kmao.conf.example
 ```
 
-O pacote também inclui documentação, licença e testes. Depois, execute `dev.bat` ou `init_recording.bat` no diretório de destino. Não é necessário copiar `.git`, configurações pessoais, gravações ou logs.
+O pacote também inclui documentação, licença e testes. Depois, execute `dev.bat` ou `init_recording.bat` no diretório de destino. O modo portátil não consulta atualizações; os atalhos criados pelo instalador usam o ciclo gerenciado. Não é necessário copiar `.git`, configurações pessoais, gravações ou logs.
 
 Para gerar outro pacote, informe uma pasta nova com `-Destination 'C:\caminho\pacote-novo'`. O exportador não substitui uma pasta ou ZIP existente.
 
@@ -175,19 +182,33 @@ A validação nativa no Windows continua pendente neste ambiente de desenvolvime
 
 A [especificação original do Activity Logger](ACTIVITY_LOGGER_SPEC.md) é histórica e inclui caminhos e propostas anteriores. Este README descreve o funcionamento atual. Não há configurações de execução ou depuração do VS Code versionadas.
 
-## Melhorias propostas
+## Instalação e atualização
 
-O próximo ciclo prevê instalador por usuário e atualização mediante confirmação
-ao iniciar o bot ou o logger, com distribuição em GitHub Releases para testes.
-Esses recursos ainda não foram implementados. As decisões, etapas e critérios de
-validação estão registrados no [plano de instalação e atualização](ROADMAP.md).
+O instalador usa `%LOCALAPPDATA%\Programs\KMAO Bot` e preserva os dados em
+`%USERPROFILE%\.kmao-bot`. Os atalhos consultam as prereleases do GitHub ao iniciar,
+pedem confirmação antes de atualizar e continuam usando a versão instalada se a
+consulta falhar ou o usuário recusar. Pacotes são autenticados por assinatura RSA,
+verificados arquivo por arquivo e preparados em diretórios por versão.
+
+A troca aguarda o encerramento cooperativo dos componentes e mantém a versão
+anterior para recuperação. O [guia de instalação](INSTALLATION.md) descreve a
+configuração das chaves, geração do `.exe`, workflow manual e publicação para
+convidados. A validação do instalador e do fluxo nativo no Windows ainda está
+pendente neste ambiente Linux. O [roadmap](ROADMAP.md) registra o estado e os
+critérios de aceitação.
 
 ## Estrutura do repositório
 
 ```text
 kmao-bot/
 ├── README.md
-├── ROADMAP.md                   # Proposta de instalação e atualização
+├── ROADMAP.md                   # Decisões e validação pendente
+├── INSTALLATION.md              # Instalação, assinatura e publicação
+├── VERSION / CHANGELOG.md
+├── Start-Kmao.ps1 / Launch-Kmao.ps1 / Apply-KmaoUpdate.ps1
+├── scripts/                     # Chaves e build de release
+├── installer/                   # Projeto Inno Setup
+├── .github/workflows/           # Validação e build manual
 ├── ACTIVITY_LOGGER_SPEC.md
 ├── LICENSE
 ├── Export-Kmao.ps1              # Geração do pacote portátil
@@ -199,17 +220,20 @@ kmao-bot/
 │   └── kmao.conf.example
 ├── lib/
 │   ├── Kmao.Common.ps1          # Caminhos, configuração e logs
-│   └── Kmao.Windows.cs          # Hooks, fila e envio de entrada
+│   ├── Kmao.Windows.cs          # Hooks, fila e envio de entrada
+│   └── Kmao.Update.ps1           # Autenticidade, extração e troca de versão
 └── tests/
     ├── Test-Core.ps1
-    └── Test-Windows.ps1
+    ├── Test-Windows.ps1
+    ├── Test-Updates.ps1
+    └── Test-Lifecycle.ps1
 ```
 
 ## Privacidade
 
 O Activity Logger registra eventos de teclado, incluindo nomes das teclas pressionadas e liberadas, e pode permitir a reconstrução de informações sensíveis. Utilize somente em dispositivos próprios ou com autorização das pessoas envolvidas.
 
-Os scripts não enviam dados para serviços externos. Os arquivos de uso ficam na pasta do aplicativo no perfil do usuário.
+Eventos, frases, configurações e gravações não são enviados para serviços externos. A instalação gerenciada faz consultas HTTPS ao GitHub para verificar e baixar atualizações. Os arquivos de uso ficam na pasta do aplicativo no perfil do usuário.
 
 ## Licença
 

@@ -152,6 +152,8 @@ public class FakeRecorder {
     $realInitialize = ${function:Initialize-Kmao}
     function Initialize-Kmao { param($Component) & $realInitialize $Component $temporary }
     function Import-KmaoWindows { }
+    function Enter-KmaoSession { return $null }
+    function Set-KmaoReady { }
     function New-KmaoInput {
         param($RecordEvents, $SamplingMilliseconds)
         if ($scenario -eq 'startup') { throw 'simulated hook installation failure' }

@@ -1,7 +1,16 @@
 # Próximas melhorias: instalação e atualização
 
-Status: proposta acordada, ainda não implementada. O estado atual continua sendo
-distribuído como pacote portátil de scripts PowerShell e biblioteca C#.
+Status: implementação inicial concluída no código. O projeto inclui instalador
+Inno Setup, lançador, atualizador com confirmação, assinatura de pacotes, troca
+atômica de versão, recuperação e workflows de validação/build manual. O pacote
+portátil continua disponível. Consulte [INSTALLATION.md](INSTALLATION.md).
+
+Validação local: testes portáveis de código, criptografia, empacotamento,
+continuidade sem conexão/recusa e recuperação de estado. A compilação do `.exe`,
+os testes de eventos/mutexes entre processos e a validação completa de instalação,
+atualização e desinstalação precisam ser executados no Windows. Chaves de produção,
+certificado Authenticode e primeira Release não foram configurados ou publicados.
+A mudança de esquema de configuração é rejeitada; a migração permanece futura.
 
 ## Público e distribuição
 

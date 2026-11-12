@@ -118,3 +118,9 @@ config/kmao.conf
 
 # Generated portable packages
 dist/
+
+# Signing identities must never be committed
+*kmao-private*.xml
+*.private.xml
+*.pfx
+*.p12

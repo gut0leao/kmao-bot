@@ -77,3 +77,75 @@ function New-KmaoInput {
     param([bool]$RecordEvents, [int]$SamplingMilliseconds)
     return [Kmao.WindowsInput]::new($RecordEvents, $SamplingMilliseconds)
 }
+
+function Get-KmaoUpdateMutex {
+    return [Threading.Mutex]::new($false, 'Local\Kmao.Update')
+}
+
+function Test-KmaoInstallerRunning {
+    try {
+        $installer = [Threading.Mutex]::OpenExisting('Local\Kmao.Install')
+        $installer.Dispose()
+        return $true
+    } catch [Threading.WaitHandleCannotBeOpenedException] { return $false }
+}
+
+function Enter-KmaoSession {
+    param([ValidateSet('bot', 'logger')][string]$Component, [string]$HealthToken)
+    $gate = Get-KmaoUpdateMutex
+    $locked = $false
+    $componentMutex = $null
+    $stop = $null
+    try {
+        if (Test-KmaoInstallerRunning) { throw 'KMAO installer is running. Wait for it to finish.' }
+        # The updater's first startup owns a named health event and may pass its gate.
+        $authorized = $false
+        if ($HealthToken) {
+            if ($HealthToken -notmatch '^[a-f0-9]{32}$') { throw 'Invalid health token.' }
+            $health = [Threading.EventWaitHandle]::OpenExisting("Local\Kmao.Health.$HealthToken")
+            $health.Dispose()
+            $authorized = $true
+        }
+        if (!$authorized) {
+            try { $locked = $gate.WaitOne(0) } catch [Threading.AbandonedMutexException] { $locked = $true }
+            if (!$locked) { throw 'KMAO is being updated. Wait for the update to finish.' }
+        }
+        $componentMutex = [Threading.Mutex]::new($false, "Local\Kmao.Component.$Component")
+        $acquired = $false
+        try { $acquired = $componentMutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $acquired = $true }
+        if (!$acquired) { throw "KMAO $Component is already running." }
+        $stop = [Threading.EventWaitHandle]::new($false, [Threading.EventResetMode]::ManualReset, "Local\Kmao.Stop.$Component")
+        $stop.Reset() | Out-Null
+        return @{ Mutex = $componentMutex; Stop = $stop }
+    }
+    catch {
+        if ($null -ne $stop) { $stop.Dispose() }
+        if ($null -ne $componentMutex) {
+            if ($acquired) { $componentMutex.ReleaseMutex() }
+            $componentMutex.Dispose()
+        }
+        throw
+    }
+    finally { if ($locked) { $gate.ReleaseMutex() }; $gate.Dispose() }
+}
+
+function Test-KmaoStopRequested {
+    param($Session)
+    return ($null -ne $Session -and $Session.Stop.WaitOne(0))
+}
+
+function Exit-KmaoSession {
+    param($Session)
+    if ($null -ne $Session) {
+        try { $Session.Stop.Dispose() }
+        finally { $Session.Mutex.ReleaseMutex(); $Session.Mutex.Dispose() }
+    }
+}
+
+function Set-KmaoReady {
+    param([string]$HealthToken)
+    if ($HealthToken) {
+        $health = [Threading.EventWaitHandle]::OpenExisting("Local\Kmao.Health.$HealthToken")
+        try { $health.Set() | Out-Null } finally { $health.Dispose() }
+    }
+}
