@@ -36,7 +36,7 @@ Source: "{#SourceDir}\current.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\versions\{#AppVersion}\*"; DestDir: "{app}\versions\{#AppVersion}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\KMAO Bot\KMAO Bot"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Start-Kmao.ps1"" -Component bot"; WorkingDir: "{app}"; AppUserModelID: "Kmao.Bot"; Comment: "Iniciar KMAO Bot"
+Name: "{autoprograms}\KMAO Bot\KMAO Bot"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File ""{app}\Start-Kmao.ps1"" -Component bot"; WorkingDir: "{app}"; AppUserModelID: "Kmao.Bot"; Comment: "Iniciar KMAO Bot"
 Name: "{autoprograms}\KMAO Bot\KMAO Bot - Gravar atividade"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Start-Kmao.ps1"" -Component logger"; WorkingDir: "{app}"; AppUserModelID: "Kmao.Logger"; Comment: "KMAO Bot - gravar atividade"
 Name: "{autoprograms}\KMAO Bot\KMAO Bot - Restaurar versao anterior"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Start-Kmao.ps1"" -Rollback"; WorkingDir: "{app}"; AppUserModelID: "Kmao.Rollback"
 Name: "{autoprograms}\KMAO Bot\Desinstalar KMAO Bot"; Filename: "{uninstallexe}"

@@ -2,7 +2,11 @@
 
 O KMAO Bot reúne dois scripts PowerShell para Windows: um bot que simula atividade de mouse e teclado e um gravador de eventos para análise de uso do computador.
 
-O projeto usa scripts PowerShell e uma biblioteca C# para as APIs do Windows. Há empacotamento portátil, instalador por usuário e atualização com confirmação ao iniciar. Não há interface principal nem integração com a bandeja do sistema.
+O projeto usa scripts PowerShell e bibliotecas C# para as APIs do Windows. O bot
+roda pela bandeja, cria seu próprio Notepad maximizado e interage somente com esse
+documento. Há empacotamento portátil, instalador por usuário e atualização com
+confirmação ao iniciar. O [guia da bandeja e do Notepad](TRAY_BOT.md) descreve os
+controles Run, Stop, Logs, About e Exit.
 
 Consulte o [guia de instalação e publicação](INSTALLATION.md) para gerar o instalador, configurar a assinatura e preparar as Releases. Nenhuma versão é publicada automaticamente.
 
@@ -86,6 +90,9 @@ Configurações antigas em `config/kmao.conf` e gravações antigas em `data/` d
 
 ## Bot de automação
 
+Na versão 0.3.0, a interface fica na bandeja e o alvo é um Notepad próprio. Veja
+[TRAY_BOT.md](TRAY_BOT.md) para uso e encerramento.
+
 Inicie por `dev.bat` ou execute o script PowerShell. Use o caminho do repositório, que pode ser diferente do exemplo:
 
 ```powershell
@@ -98,25 +105,29 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\caminho\kmao-bot\dev
 
 ### Comportamento
 
-- Aguarda pelo menos 60 segundos de inatividade e depois um intervalo aleatório de 30 a 239 segundos.
-- Move o cursor dentro de um retângulo de 400 × 200 pixels no centro da tela principal e executa de 1 a 3 cliques por ciclo.
-- Tem 70% de chance de digitar uma frase aleatória, com pausas entre caracteres, e pressionar `Enter` ao final.
-- Monitora mouse e teclado em uma thread própria. Os eventos enviados pelo bot são marcados para não serem confundidos com atividade externa.
-- Cancela o ciclo ao detectar atividade externa, inclusive durante a espera e a digitação. As esperas verificam o cancelamento a cada até 25 ms; cada nova ação também verifica o estado antes de enviar entrada.
-- Verifica a janela em foco. Após um clique do bot, a referência é atualizada para a janela ativada; mudanças posteriores cancelam o restante do ciclo.
-- Envia pressionar/soltar juntos em cada clique ou tecla para evitar deixar botões presos ao cancelar.
-
-A detecção depende da entrega de eventos pelo Windows; ela não garante ausência absoluta de uma ação que já esteja sendo enviada no instante da retomada do usuário. Uma frase parcialmente digitada permanece no aplicativo de destino, mas o restante e o `Enter` são cancelados quando a retomada é detectada.
+- Cria um Notepad próprio maximizado, com `KMAO BOT running...`, e inicia em Run.
+- Exibe um robô verde em Run e cinza em Stop; botão direito oferece Run/Stop, Logs,
+  About e Exit. O ícone pode estar na área oculta da bandeja do Windows.
+- Aguarda pelo menos 60 segundos de inatividade e um intervalo aleatório de 30 a
+  239 segundos. Verde indica que Run está habilitado, inclusive durante as esperas.
+- Executa de 1 a 3 cliques no retângulo central de até 400 × 200 pixels, limitado
+  à área do editor, com 70% de chance de acrescentar uma frase e uma nova linha.
+- Escreve texto Unicode diretamente no editor do Notepad próprio. Não digita nem
+  envia Enter a outros aplicativos. O alvo não acompanha mudanças de janela.
+- Cancela o ciclo ao detectar atividade externa, Stop, Exit ou mudança de foco/aba.
+- Logs abre um console com acompanhamento ao vivo. About abre o projeto no GitHub.
+- Exit e a parada pelo atualizador descartam apenas o documento do bot sem salvar.
+  Outras abas e janelas do Notepad são preservadas.
 
 ### Configuração
 
 Edite `%USERPROFILE%\.kmao-bot\config\bot.conf`. Todas as opções estão em [config/bot.conf.example](config/bot.conf.example), incluindo intervalos, área de cliques, quantidade de cliques, chance de digitação e pausas.
 
-Os limites máximos dos intervalos aleatórios são exclusivos. Cada mínimo deve ser menor que seu máximo. Chances aceitam 0 a 100; intervalos e limite de inatividade aceitam 1 a 86400 segundos, pausas aceitam 0 a 60000 ms e limites de cliques aceitam 1 a 100. A área configurada deve caber na tela principal.
+Os limites máximos dos intervalos aleatórios são exclusivos. Cada mínimo deve ser menor que seu máximo. Chances aceitam 0 a 100; intervalos e limite de inatividade aceitam 1 a 86400 segundos, pausas aceitam 0 a 60000 ms e limites de cliques aceitam 1 a 100. A área configurada é limitada ao tamanho atual do editor do Notepad.
 
-Edite `%USERPROFILE%\.kmao-bot\phrases.txt` para definir uma frase por linha. Linhas vazias são ignoradas; um arquivo sem frases é tratado como erro. As frases são lidas como UTF-8 e enviadas como caracteres Unicode, sem interpretar caracteres especiais como comandos `SendKeys`.
+Edite `%USERPROFILE%\.kmao-bot\phrases.txt` para definir uma frase por linha. Linhas vazias são ignoradas; um arquivo sem frases é tratado como erro. As frases são lidas como UTF-8 e enviadas como texto Unicode ao editor, sem interpretar caracteres especiais como comandos de teclado.
 
-O bot ainda clica e digita na janela atingida pelos cliques; não há uma lista de aplicativos permitidos. Use `Ctrl+C` para interromper.
+Use Stop para pausar e Exit para encerrar pelo ícone da bandeja. A janela própria é descartável; não a use para anotações que deseja manter. Se substituir o documento ou remover a mensagem inicial, o bot pausa e preserva o conteúdo.
 
 ## Activity Logger
 
@@ -169,7 +180,7 @@ t,e,x,y,k
 
 São registrados cliques dos botões esquerdo, direito, central e auxiliares, scroll vertical/horizontal e eventos de teclado comuns e de sistema (`WM_SYSKEYDOWN`/`WM_SYSKEYUP`). Movimentos são registrados apenas quando há mudança de posição e o intervalo mínimo é atingido.
 
-O logger também captura entradas sintetizadas por software, inclusive pelo bot quando ambos estão em execução. Não registra títulos de janelas ou nomes de processos. Os registros de clique não distinguem os botões, e os de scroll não incluem direção ou intensidade.
+O logger também captura entradas sintetizadas por software. Os movimentos do bot podem ser registrados, mas os cliques e textos enviados diretamente ao editor do Notepad não produzem eventos globais de mouse/teclado. Não registra títulos de janelas ou nomes de processos. Os registros de clique não distinguem os botões, e os de scroll não incluem direção ou intensidade.
 
 ## Configuração, erros e logs
 
@@ -220,6 +231,8 @@ kmao-bot/
 ├── README.md
 ├── ROADMAP.md                   # Decisões e validação pendente
 ├── INSTALLATION.md              # Instalação, assinatura e publicação
+├── TRAY_BOT.md                  # Bandeja, Notepad próprio e testes interativos
+├── Show-KmaoLogs.ps1            # Acompanhamento do log ao vivo
 ├── VERSION / CHANGELOG.md
 ├── Start-Kmao.ps1 / Launch-Kmao.ps1 / Apply-KmaoUpdate.ps1
 ├── scripts/                     # Chaves e build de release
@@ -237,12 +250,15 @@ kmao-bot/
 ├── lib/
 │   ├── Kmao.Common.ps1          # Caminhos, configuração e logs
 │   ├── Kmao.Windows.cs          # Hooks, fila e envio de entrada
-│   └── Kmao.Update.ps1           # Autenticidade, extração e troca de versão
+│   ├── Kmao.Update.ps1           # Autenticidade, extração e troca de versão
+│   ├── Kmao.Desktop.cs           # Bandeja e ícones
+│   └── Kmao.Notepad.cs           # Janela e documento próprios
 └── tests/
     ├── Test-Core.ps1
     ├── Test-Windows.ps1
     ├── Test-Updates.ps1
-    └── Test-Lifecycle.ps1
+    ├── Test-Lifecycle.ps1
+    └── Test-Desktop*.ps1
 ```
 
 ## Privacidade

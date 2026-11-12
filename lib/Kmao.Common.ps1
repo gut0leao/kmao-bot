@@ -149,3 +149,25 @@ function Set-KmaoReady {
         try { $health.Set() | Out-Null } finally { $health.Dispose() }
     }
 }
+
+function Import-KmaoDesktop {
+    if ($PSVersionTable.PSEdition -ne 'Desktop') { throw 'The tray bot requires Windows PowerShell 5.1 (powershell.exe), not pwsh.' }
+    Import-KmaoWindows
+    Add-Type -AssemblyName UIAutomationClient
+    Add-Type -AssemblyName UIAutomationTypes
+    Add-Type -AssemblyName WindowsBase
+    if (!('Kmao.TrayController' -as [type])) {
+        $references = @(
+            'System.dll', 'System.Core.dll',
+            [System.Windows.Forms.Application].Assembly.Location,
+            [System.Drawing.Bitmap].Assembly.Location,
+            [System.Windows.Automation.AutomationElement].Assembly.Location,
+            [System.Windows.Automation.ControlType].Assembly.Location,
+            [System.Windows.Threading.Dispatcher].Assembly.Location
+        ) | Select-Object -Unique
+        $sources = @(Join-Path $PSScriptRoot 'Kmao.Desktop.cs')
+        $notepadSource = Join-Path $PSScriptRoot 'Kmao.Notepad.cs'
+        if (Test-Path -LiteralPath $notepadSource) { $sources += $notepadSource }
+        Add-Type -Path $sources -ReferencedAssemblies $references -ErrorAction Stop
+    }
+}

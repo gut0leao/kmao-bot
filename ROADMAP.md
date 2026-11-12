@@ -102,3 +102,16 @@ Referências: [Inno Setup](https://jrsoftware.org/isinfo.php),
 [instalação sem administrador](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm),
 [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases)
 e [assinatura de scripts PowerShell](https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_signing).
+
+
+## Implementado na 0.3.0: Notepad próprio e bandeja
+
+- Janela isolada e maximizada do Notepad com mensagem inicial e texto restrito ao editor.
+- Ícones de robô verde/cinza, Run/Stop, Logs ao vivo, About e Exit.
+- Descarte sem salvar do documento criado pelo bot e preservação de outras abas/janelas.
+- Pausa e preservação do documento quando seu conteúdo deixa de ser identificado como pertencente ao bot.
+- Integração com o encerramento cooperativo e a prontidão exigidos pelo atualizador.
+- Testes Windows dos ícones, controles, logs e do processo completo usando perfil temporário.
+
+Uso e limites: [TRAY_BOT.md](TRAY_BOT.md). O fluxo real de atualização entre Releases
+publicadas continua sendo validado com as instalações de teste.

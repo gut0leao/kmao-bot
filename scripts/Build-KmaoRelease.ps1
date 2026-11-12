@@ -33,10 +33,15 @@ try {
         $name = $file.FullName.Substring($payload.Length + 1).Replace('\', '/')
         $files[$name] = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
     }
+    $history = [IO.File]::ReadAllText((Join-Path $repo 'CHANGELOG.md'))
+    $entry = [regex]::Match($history, '(?ms)^##\s+' + [regex]::Escape($version) + '\s*\r?\n(?<body>.*?)(?=^##\s|\z)')
+    if (!$entry.Success) { throw "CHANGELOG.md has no release notes for $version." }
+    $notes = $entry.Groups['body'].Value.Trim()
+    [IO.File]::WriteAllText((Join-Path $OutputDirectory 'kmao-release-notes.md'), $notes + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
     $manifest = [ordered]@{
         protocol = 1; channel = 'testing'; configurationSchema = 1; version = $version; asset = $assetName
         sha256 = (Get-FileHash -LiteralPath (Join-Path $OutputDirectory $assetName) -Algorithm SHA256).Hash.ToLowerInvariant()
-        notes = [IO.File]::ReadAllText((Join-Path $repo 'CHANGELOG.md'))
+        notes = $notes
         files = $files
     }
     $manifestPath = Join-Path $OutputDirectory 'kmao-manifest.json'

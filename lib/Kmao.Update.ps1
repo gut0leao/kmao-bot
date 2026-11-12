@@ -152,6 +152,7 @@ function Start-KmaoInstalledComponent {
     param([string]$InstallRoot, [string]$Component, [string]$HealthToken)
     if ($InstallRoot.Contains('"')) { throw 'Invalid installation path.' }
     $arguments = '-NoProfile -ExecutionPolicy Bypass -File "{0}" -Component {1} -SkipUpdateCheck' -f (Join-Path $InstallRoot 'Start-Kmao.ps1'), $Component
+    if ($Component -eq 'bot') { $arguments = '-STA -WindowStyle Hidden ' + $arguments }
     if ($HealthToken) { $arguments += ' -HealthToken ' + $HealthToken }
     return Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList $arguments -PassThru
 }

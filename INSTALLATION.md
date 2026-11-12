@@ -1,6 +1,6 @@
 # Instalação, atualização e publicação
 
-A versão atual de teste é `0.2.1`. O instalador e o atualizador estão implementados;
+A versão atual de teste é `0.3.0`. O instalador e o atualizador estão implementados;
 nenhuma Release ou chave de produção é criada automaticamente ao clonar o projeto.
 
 ## Como a instalação funciona
@@ -14,7 +14,7 @@ O instalador Inno Setup roda por usuário, sem elevação, e usa por padrão:
 ├── current.json                  # Versão ativa
 ├── previous.json                 # Versão anterior, quando disponível
 └── versions\
-    └── 0.2.1\                   # Código completo e independente por versão
+    └── 0.3.0\                   # Código completo e independente por versão
 ```
 
 O menu Iniciar recebe os atalhos **KMAO Bot**, **KMAO Bot - Gravar atividade**,
@@ -35,6 +35,13 @@ instalador verifica seus mutexes e pede que sejam fechados. Ele não força o
 encerramento de processos PowerShell. Cada usuário pode executar uma instância do
 bot e uma do logger por sessão de desktop.
 
+## Bandeja e Notepad próprio
+
+O bot 0.3.0 abre um Notepad próprio e roda pela bandeja, com Run/Stop, Logs, About e
+Exit. O [guia da interface](TRAY_BOT.md) detalha a pausa, o descarte sem salvar e a
+preservação de outros documentos. Esses recursos funcionam por atualização do ZIP,
+sem exigir alterações nos atalhos da 0.2.1.
+
 ## Desenvolvimento no WSL
 
 O repositório pode permanecer no filesystem Linux (`/home/...`). Use o terminal
@@ -42,7 +49,8 @@ Bash ou Zsh do WSL, a partir da raiz do projeto:
 
 ```bash
 ./scripts/kmao.sh doctor    # Verifica PowerShell e Inno Setup do Windows
-./scripts/kmao.sh test      # Testes no Windows PowerShell 5.1, sem gerar entrada
+./scripts/kmao.sh test      # Testes de núcleo, sessão, bandeja e build no Windows
+./scripts/kmao.sh desktop-test # Interativo: Notepad próprio e encerramento do bot
 ./scripts/kmao.sh keygen    # Uma vez: chaves no perfil do usuário Windows
 ./scripts/kmao.sh build     # ZIP assinado, manifesto, assinatura e instalador
 ```
@@ -136,9 +144,10 @@ Execute os testes antes de gerar uma versão para convidados:
 
 O resultado fica em `dist/release/`:
 
-- `kmao-setup-0.2.1.exe`: instalação inicial ou reinstalação manual.
-- `kmao-0.2.1.zip`: código da versão usado pelo atualizador.
+- `kmao-setup-0.3.0.exe`: instalação inicial ou reinstalação manual.
+- `kmao-0.3.0.zip`: código da versão usado pelo atualizador.
 - `kmao-manifest.json` e `kmao-manifest.sig`: metadados e assinatura RSA/SHA-256.
+- `kmao-release-notes.md`: notas somente da versão atual, para usar na descrição da Release.
 - `payload/` e `installer-source/`: pastas intermediárias, não destinadas à Release.
 
 O build recusa um diretório de saída existente. Para outra geração, use
@@ -157,21 +166,21 @@ Configure previamente os secrets do repositório, usando GitHub CLI autenticado:
 ```
 
 O workflow testa no Windows PowerShell, gera o instalador com Inno Setup e entrega
-os quatro arquivos como artifact. As chaves temporárias ficam no diretório do
+os quatro anexos de distribuição e o arquivo de notas como artifact. As chaves temporárias ficam no diretório do
 runner e são excluídas no final; não são enviadas como artifacts.
 
 Por padrão, não cria Release. Se `create_draft` estiver habilitado, cria apenas um
-**rascunho não publicado**, marcado como prerelease, na tag `v0.2.1`. A publicação
+**rascunho não publicado**, marcado como prerelease, na tag `v0.3.0`. A publicação
 para os convidados depende de uma ação posterior no GitHub. Os workflows de
 validação em pushes/PRs não recebem nem precisam da chave de publicação.
 
 ## Publicar uma nova versão para testes
 
-1. Atualize `VERSION` com três números, por exemplo `0.2.2`, e escreva as notas em
+1. Atualize `VERSION` com três números, por exemplo `0.3.1`, e escreva as notas em
    `CHANGELOG.md`. O canal inicial usa versões numéricas e a marca prerelease do
    GitHub; sufixos como `-beta.1` não são suportados neste protocolo.
 2. Gere os quatro arquivos na mesma execução, usando a mesma chave de assinatura.
-3. Anexe instalador, ZIP, manifesto e assinatura à Release `v0.2.2` do repositório
+3. Anexe instalador, ZIP, manifesto e assinatura à Release `v0.3.1` do repositório
    `gut0leao/kmao-bot` e marque-a como **prerelease**.
 4. Revise o rascunho e publique quando decidir compartilhar o teste.
 

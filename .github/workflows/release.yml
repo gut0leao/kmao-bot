@@ -21,6 +21,7 @@ jobs:
           ./tests/Test-Core.ps1
           ./tests/Test-Updates.ps1
           ./tests/Test-Lifecycle.ps1
+          ./tests/Test-Desktop.ps1
       - name: Prepare release signing keys
         shell: pwsh
         env:
@@ -44,6 +45,7 @@ jobs:
             dist/release/kmao-setup-*.exe
             dist/release/kmao-manifest.json
             dist/release/kmao-manifest.sig
+            dist/release/kmao-release-notes.md
       - name: Create unpublished draft
         if: inputs.create_draft
         shell: pwsh
@@ -51,7 +53,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = (Get-Content VERSION -Raw).Trim()
-          gh release create "v$version" --draft --prerelease --target $env:GITHUB_SHA --title "KMAO $version (testes)" --notes-file CHANGELOG.md dist/release/kmao-*.zip dist/release/kmao-setup-*.exe dist/release/kmao-manifest.json dist/release/kmao-manifest.sig
+          gh release create "v$version" --draft --prerelease --target $env:GITHUB_SHA --title "KMAO $version (testes)" --notes-file dist/release/kmao-release-notes.md dist/release/kmao-*.zip dist/release/kmao-setup-*.exe dist/release/kmao-manifest.json dist/release/kmao-manifest.sig
           if ($LASTEXITCODE -ne 0) { throw 'Could not create release draft.' }
       - name: Remove temporary signing keys
         if: always()

@@ -24,6 +24,7 @@ jobs:
           ./tests/Test-Core.ps1
           ./tests/Test-Updates.ps1
           ./tests/Test-Lifecycle.ps1
+          ./tests/Test-Desktop.ps1
       - name: Windows PowerShell 5.1 compatibility
         if: runner.os == 'Windows'
         shell: powershell
@@ -31,3 +32,4 @@ jobs:
           ./tests/Test-Core.ps1
           ./tests/Test-Updates.ps1
           ./tests/Test-Lifecycle.ps1
+          ./tests/Test-Desktop.ps1

@@ -1,7 +1,7 @@
 # Receives absolute Windows/UNC paths from kmao.sh and runs in Windows PowerShell.
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('doctor', 'test', 'keygen', 'build', 'export')][string]$Action,
+    [Parameter(Mandatory = $true)][ValidateSet('doctor', 'test', 'desktop-test', 'keygen', 'build', 'export')][string]$Action,
     [Parameter(Mandatory = $true)][string]$RepositoryPath,
     [string]$PrivateKeyPath,
     [string]$PublicKeyPath,
@@ -28,7 +28,12 @@ try {
             & (Join-Path $RepositoryPath 'tests/Test-Core.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-Updates.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-Lifecycle.ps1')
+            & (Join-Path $RepositoryPath 'tests/Test-Desktop.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-WslBuild.ps1')
+        }
+        desktop-test {
+            & (Join-Path $RepositoryPath 'tests/Test-DesktopInteractive.ps1')
+            & (Join-Path $RepositoryPath 'tests/Test-BotDesktopLifecycle.ps1')
         }
         keygen {
             # Windows ACL protection is not available for files on the WSL filesystem.

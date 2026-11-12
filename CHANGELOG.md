@@ -1,5 +1,21 @@
 # Alterações
 
+## 0.3.0
+
+- Abre um Notepad próprio, maximizado, com a mensagem `KMAO BOT running...`.
+- Restringe cliques e texto ao documento criado pelo bot; interrompe o ciclo ao detectar atividade do usuário ou mudança de foco/aba.
+- Adiciona execução pela bandeja com carinha de robô verde em Run e cinza em Stop.
+- Inclui Run, Stop, Logs, About e Exit no menu da bandeja; duplo clique alterna Run/Stop.
+- Abre acompanhamento dos logs em tempo real em uma janela PowerShell.
+- Descarta o documento do bot sem salvar ao sair ou atualizar, preservando outras abas e janelas do Notepad.
+- Preserva o documento e pausa se ele for substituído ou se a mensagem inicial for removida.
+- Mantém configurações e frases existentes, com suporte a texto Unicode e emojis.
+- Valida a inicialização da interface e o encerramento cooperativo dentro dos limites do atualizador.
+
+### Atualização da 0.2.1
+
+Os recursos desta versão funcionam pela atualização automática do código, sem recriar os atalhos. Abra o bot pelo atalho da instalação e aceite a atualização. O ícone pode aparecer na área de ícones ocultos da bandeja. Verde significa Run habilitado; a automação ainda aguarda inatividade e só atua no Notepad próprio em primeiro plano. Use Exit para descartar esse documento e encerrar.
+
 ## 0.2.1
 
 - Corrige os atalhos do menu Iniciar para incluir o nome KMAO Bot e permitir sua localização pela pesquisa do Windows.

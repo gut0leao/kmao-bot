@@ -5,11 +5,12 @@ $ErrorActionPreference = 'Stop'
 
 $files = @(
     'VERSION', 'CHANGELOG.md', 'Start-Kmao.ps1', 'Launch-Kmao.ps1', 'Apply-KmaoUpdate.ps1',
-    'lib/Kmao.Update.ps1',
+    'lib/Kmao.Update.ps1', 'lib/Kmao.Desktop.cs', 'lib/Kmao.Notepad.cs', 'Show-KmaoLogs.ps1',
+    'tests/Test-Desktop.ps1', 'tests/Test-DesktopInteractive.ps1', 'tests/Test-BotDesktopLifecycle.ps1',
     'dev.bat', 'dev.ps1', 'init_recording.bat', 'activity_logger.ps1',
     'lib/Kmao.Common.ps1', 'lib/Kmao.Windows.cs',
     'config/bot.conf.example', 'config/kmao.conf.example', 'phrases.txt',
-    'INSTALLATION.md',
+    'INSTALLATION.md', 'TRAY_BOT.md',
     'scripts/kmao.sh', 'scripts/Invoke-KmaoFromWsl.ps1', 'scripts/Kmao.BuildTools.ps1',
     'scripts/New-KmaoSigningKey.ps1', 'scripts/Build-KmaoRelease.ps1', 'installer/Kmao.iss',
     'tests/Test-WslBuild.ps1',

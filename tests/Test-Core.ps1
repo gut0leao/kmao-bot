@@ -99,6 +99,10 @@ public class FakeInputMonitor {
     }
 }
 '@
+    $desktop = [pscustomobject]@{ Enabled = $true; ExitRequested = $false }
+    $notepad = [pscustomobject]@{ IsForeground = $true; Window = [IntPtr]1; EditorBounds = @(0, 0, 400, 200) }
+    $notepad | Add-Member -MemberType ScriptMethod -Name IsEditorPoint -Value { param($x, $y) return $true }
+    $notepad | Add-Member -MemberType ScriptMethod -Name IsCursorOverEditor -Value { return $true }
     $script:monitor = [FakeInputMonitor]::new()
     $script:cycleGeneration = 1L
     $script:targetWindow = [IntPtr]1
@@ -109,9 +113,20 @@ public class FakeInputMonitor {
 
     # Mock the OS boundary and timing, preserving the actual production cycle logic.
     function Get-BotWindow { return [IntPtr]1 }
+    function Send-BotClick {
+        param([int]$X, [int]$Y)
+        Assert-CycleActive
+        $monitor.Click($cycleGeneration, $targetWindow) | Out-Null
+    }
+    function Send-BotText {
+        param([string]$Text)
+        Assert-CycleActive
+        if ($Text -eq "`r`n") { $monitor.Enter($cycleGeneration, $targetWindow) | Out-Null }
+        else { $monitor.TypeCharacter($cycleGeneration, $targetWindow, $Text[0]) | Out-Null }
+    }
     function Get-Delay { param($Minimum, $Maximum) if ($Minimum -eq 'MIN_CLICKS') { return 2 }; return 0 }
     $settings = @{ IDLE_TIME_THRESHOLD = 60; TYPING_CHANCE = 100; HESITATION_CHANCE = 0; RECT_WIDTH = 400; RECT_HEIGHT = 200 }
-    $rectLeft = 0; $rectTop = 0; $phrases = @('abc')
+    $rectLeft = 0; $rectTop = 0; $rectWidth = 400; $rectHeight = 200; $phrases = @('abc')
     $script:monitor = [FakeInputMonitor]::new()
     $monitor.CancelAfterClick = 1
     Assert-Throws { Invoke-BotCycle } 'User activity'
@@ -127,6 +142,16 @@ public class FakeInputMonitor {
     $script:monitor = [FakeInputMonitor]::new()
     Invoke-BotCycle
     Assert-True ($monitor.Clicks -eq 2 -and $monitor.Characters -eq 3 -and $monitor.Enters -eq 1) 'Uninterrupted cycle failed.'
+    $notepad | Add-Member -MemberType ScriptMethod -Name IsCursorOverEditor -Value { return $false } -Force
+    $script:monitor = [FakeInputMonitor]::new()
+    Assert-Throws { Invoke-BotCycle } 'Cursor left the owned editor'
+    Assert-True ($monitor.Clicks -eq 0 -and $monitor.Characters -eq 0) 'A click escaped the owned editor.'
+    $notepad | Add-Member -MemberType ScriptMethod -Name IsCursorOverEditor -Value { return $true } -Force
+    $desktop.Enabled = $false
+    Assert-Throws { Invoke-BotCycle } 'Stopped from tray'
+    $desktop.Enabled = $true; $notepad.IsForeground = $false
+    Assert-Throws { Invoke-BotCycle } 'Owned Notepad'
+    $notepad.IsForeground = $true
     # Exercise the production logger entry point with a fake native producer.
     # Paths/configuration/writer/finally are real; only the OS boundary is replaced.
     $tokens = $null; $errors = $null

@@ -4,10 +4,11 @@ set -euo pipefail
 
 usage() {
     cat <<'HELP'
-Usage: ./scripts/kmao.sh <doctor|test|keygen|build|export> [options]
+Usage: ./scripts/kmao.sh <doctor|test|desktop-test|keygen|build|export> [options]
 
   doctor  Show Windows PowerShell and Inno Setup availability.
   test    Run core, update and session tests in Windows PowerShell 5.1.
+  desktop-test  Open/discard an owned Notepad and test real tray bot lifecycle.
   keygen  Create signing keys in the Windows user's .kmao-signing directory.
   build   Build signed release files and the Windows installer.
   export  Create the portable folder and ZIP.
@@ -27,7 +28,7 @@ HELP
 if [[ $# -eq 0 || ${1:-} == -h || ${1:-} == --help ]]; then usage; exit 0; fi
 kmao_action=$1
 shift
-case "$kmao_action" in doctor|test|keygen|build|export) ;; *) usage >&2; exit 2 ;; esac
+case "$kmao_action" in doctor|test|desktop-test|keygen|build|export) ;; *) usage >&2; exit 2 ;; esac
 
 for kmao_tool in powershell.exe wslpath; do
     if ! command -v "$kmao_tool" >/dev/null 2>&1; then
