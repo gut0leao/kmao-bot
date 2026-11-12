@@ -13,7 +13,7 @@ function Assert-Throws {
 $temporary = Join-Path ([IO.Path]::GetTempPath()) ('kmao-tests-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory $temporary | Out-Null
 try {
-    $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+    $repo = [IO.Path]::GetFullPath((Resolve-Path (Join-Path $PSScriptRoot '..')).ProviderPath)
     foreach ($file in Get-ChildItem $repo -Recurse -Filter '*.ps1') {
         $tokens = $null; $errors = $null
         [Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors) | Out-Null

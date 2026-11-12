@@ -12,7 +12,7 @@ function Initialize-Kmao {
         New-Item -ItemType Directory -Path $path -Force -ErrorAction Stop | Out-Null
     }
     $script:KmaoRoot = $root
-    $script:KmaoLogFile = Join-Path $root ('logs/{0}-{1}-{2}.log' -f $Component, (Get-Date -Format 'yyyyMMdd-HHmmss-fff'), $PID)
+    $script:KmaoLogFile = Join-Path $root ('logs/{0}-{1}-{2}-{3}.log' -f $Component, (Get-Date -Format 'yyyyMMdd-HHmmss-fff'), $PID, [Guid]::NewGuid().ToString('N'))
     # Fail startup immediately if the diagnostics file cannot be created.
     New-Item -ItemType File -Path $script:KmaoLogFile -ErrorAction Stop | Out-Null
     Write-KmaoLog INFO "Application directory: $root"

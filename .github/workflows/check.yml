@@ -12,6 +12,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: WSL bridge argument handling
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          bash -n scripts/kmao.sh
+          python3 tests/test_wsl_bridge.py
       - name: Core and update tests
         shell: pwsh
         run: |

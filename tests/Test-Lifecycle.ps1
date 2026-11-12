@@ -1,7 +1,7 @@
 # No desktop input is generated. Exercises actual Windows process/event/mutex coordination.
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { Write-Host 'SKIP: lifecycle integration requires Windows named events.'; return }
-$repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$repo = [IO.Path]::GetFullPath((Resolve-Path (Join-Path $PSScriptRoot '..')).ProviderPath)
 . (Join-Path $repo 'lib/Kmao.Common.ps1')
 . (Join-Path $repo 'lib/Kmao.Update.ps1')
 $temporary = Join-Path ([IO.Path]::GetTempPath()) ('kmao-lifecycle-' + [Guid]::NewGuid().ToString('N'))

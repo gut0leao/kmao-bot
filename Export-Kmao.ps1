@@ -10,7 +10,9 @@ $files = @(
     'lib/Kmao.Common.ps1', 'lib/Kmao.Windows.cs',
     'config/bot.conf.example', 'config/kmao.conf.example', 'phrases.txt',
     'INSTALLATION.md',
+    'scripts/kmao.sh', 'scripts/Invoke-KmaoFromWsl.ps1', 'scripts/Kmao.BuildTools.ps1',
     'scripts/New-KmaoSigningKey.ps1', 'scripts/Build-KmaoRelease.ps1', 'installer/Kmao.iss',
+    'tests/Test-WslBuild.ps1',
     'tests/Test-Updates.ps1', 'tests/Test-Lifecycle.ps1', 'tests/fixtures/SessionWorker.ps1',
     'README.md', 'ROADMAP.md', 'LICENSE', 'ACTIVITY_LOGGER_SPEC.md', 'Export-Kmao.ps1',
     'tests/Test-Core.ps1', 'tests/Test-Windows.ps1'

@@ -7,18 +7,20 @@ param(
     [switch]$SkipInstaller
 )
 $ErrorActionPreference = 'Stop'
-$repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$repo = [IO.Path]::GetFullPath((Resolve-Path (Join-Path $PSScriptRoot '..')).ProviderPath)
 . (Join-Path $repo 'lib/Kmao.Update.ps1')
+. (Join-Path $PSScriptRoot 'Kmao.BuildTools.ps1')
+if (!$SkipInstaller) { $IsccPath = Resolve-KmaoIscc $IsccPath }
 $version = (Get-Content -LiteralPath (Join-Path $repo 'VERSION') -Raw).Trim()
 ConvertTo-KmaoVersion $version | Out-Null
 if (Test-Path -LiteralPath $OutputDirectory) { throw 'Output directory already exists. Choose a new directory.' }
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
-$OutputDirectory = (Resolve-Path $OutputDirectory).Path
+$OutputDirectory = [IO.Path]::GetFullPath((Resolve-Path -LiteralPath $OutputDirectory).ProviderPath)
 $rsa = [Security.Cryptography.RSA]::Create()
 $public = [Security.Cryptography.RSA]::Create()
 try {
-    $rsa.FromXmlString([IO.File]::ReadAllText((Resolve-Path $PrivateKeyPath).Path))
-    $publicXml = [IO.File]::ReadAllText((Resolve-Path $PublicKeyPath).Path)
+    $rsa.FromXmlString([IO.File]::ReadAllText((Resolve-Path -LiteralPath $PrivateKeyPath).ProviderPath))
+    $publicXml = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $PublicKeyPath).ProviderPath)
     if (([xml]$publicXml).RSAKeyValue.D) { throw 'PublicKeyPath must not contain a private key.' }
     $public.FromXmlString($publicXml)
     if ($rsa.KeySize -lt 3072 -or $rsa.ToXmlString($false) -cne $public.ToXmlString($false)) { throw 'Signing keys do not match or are too small.' }
@@ -34,7 +36,7 @@ try {
     $manifest = [ordered]@{
         protocol = 1; channel = 'testing'; configurationSchema = 1; version = $version; asset = $assetName
         sha256 = (Get-FileHash -LiteralPath (Join-Path $OutputDirectory $assetName) -Algorithm SHA256).Hash.ToLowerInvariant()
-        notes = (Get-Content -LiteralPath (Join-Path $repo 'CHANGELOG.md') -Raw)
+        notes = [IO.File]::ReadAllText((Join-Path $repo 'CHANGELOG.md'))
         files = $files
     }
     $manifestPath = Join-Path $OutputDirectory 'kmao-manifest.json'
@@ -51,7 +53,6 @@ try {
     New-Item -ItemType Directory -Path $versions | Out-Null
     Copy-Item -LiteralPath $payload -Destination (Join-Path $versions $version) -Recurse
     if (!$SkipInstaller) {
-        if (!$IsccPath) { $IsccPath = (Get-Command ISCC.exe -ErrorAction Stop).Source }
         & $IsccPath "/DAppVersion=$version" "/DSourceDir=$installerSource" "/DOutputDir=$OutputDirectory" (Join-Path $repo 'installer/Kmao.iss')
         if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
     }

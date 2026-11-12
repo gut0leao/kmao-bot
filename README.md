@@ -14,6 +14,22 @@ Consulte o [guia de instalação e publicação](INSTALLATION.md) para gerar o i
 
 O instalador exige Windows PowerShell 5.1 disponível e instalação por usuário. A biblioteca C# é compilada em memória por `Add-Type`; não é necessário instalar um compilador separado. Os scripts de aplicação não funcionam nativamente em Linux ou macOS.
 
+## Desenvolver no WSL
+
+Mantenha o repositório no Linux e execute os comandos abaixo pelo terminal WSL.
+Eles chamam o PowerShell do Windows e convertem os caminhos automaticamente:
+
+```bash
+./scripts/kmao.sh doctor
+./scripts/kmao.sh test
+./scripts/kmao.sh keygen  # Somente na primeira preparação da assinatura
+./scripts/kmao.sh build
+```
+
+O Inno Setup 6 precisa estar instalado no Windows para gerar o `.exe`. Os arquivos
+ficam em `dist/release/` no repositório WSL; as chaves padrão ficam no perfil do
+usuário Windows, fora do repositório. Veja o [fluxo WSL completo](INSTALLATION.md#desenvolvimento-no-wsl).
+
 ## Copiar para outro computador ou diretório
 
 Os scripts dependem das pastas `lib/`, `config/` e do modelo `phrases.txt` distribuídos junto deles. Copiar somente `dev.ps1` e `dev.bat` deixa o pacote incompleto. A pasta do aplicativo no perfil guarda os dados do usuário; o código e os modelos continuam necessários na pasta de execução.
@@ -178,7 +194,7 @@ Há também um teste de integração para desktop Windows. Ele move o cursor em 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Test-Windows.ps1
 ```
 
-A validação nativa no Windows continua pendente neste ambiente de desenvolvimento Linux. Também devem ser verificados manualmente a gravação por duração, a interrupção com `Ctrl+C`, falhas de permissão/escrita, a retomada real de atividade durante a digitação e a troca de janela. O Windows pode remover silenciosamente hooks que excedam seu tempo limite; não há recuperação automática implementada.
+Os testes de núcleo, atualização e coordenação de sessões passaram no Windows PowerShell 5.1 chamado pelo WSL. A captura por hooks em desktop e a instalação completa ainda precisam de validação manual. Também devem ser verificados manualmente a gravação por duração, a interrupção com `Ctrl+C`, falhas de permissão/escrita, a retomada real de atividade durante a digitação e a troca de janela. O Windows pode remover silenciosamente hooks que excedam seu tempo limite; não há recuperação automática implementada.
 
 A [especificação original do Activity Logger](ACTIVITY_LOGGER_SPEC.md) é histórica e inclui caminhos e propostas anteriores. Este README descreve o funcionamento atual. Não há configurações de execução ou depuração do VS Code versionadas.
 
@@ -193,8 +209,8 @@ verificados arquivo por arquivo e preparados em diretórios por versão.
 A troca aguarda o encerramento cooperativo dos componentes e mantém a versão
 anterior para recuperação. O [guia de instalação](INSTALLATION.md) descreve a
 configuração das chaves, geração do `.exe`, workflow manual e publicação para
-convidados. A validação do instalador e do fluxo nativo no Windows ainda está
-pendente neste ambiente Linux. O [roadmap](ROADMAP.md) registra o estado e os
+convidados. A compilação do instalador e os testes de sessão e atualização passaram no Windows
+via WSL; a validação manual completa de instalação e atualização continua necessária. O [roadmap](ROADMAP.md) registra o estado e os
 critérios de aceitação.
 
 ## Estrutura do repositório

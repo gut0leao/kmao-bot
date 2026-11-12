@@ -36,10 +36,17 @@ Source: "{#SourceDir}\current.json"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\versions\{#AppVersion}\*"; DestDir: "{app}\versions\{#AppVersion}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{autoprograms}\KMAO Bot\Iniciar bot"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Start-Kmao.ps1"" -Component bot"; WorkingDir: "{app}"
-Name: "{autoprograms}\KMAO Bot\Gravar atividade"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Start-Kmao.ps1"" -Component logger"; WorkingDir: "{app}"
-Name: "{autoprograms}\KMAO Bot\Restaurar versao anterior"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Start-Kmao.ps1"" -Rollback"; WorkingDir: "{app}"
-Name: "{autoprograms}\KMAO Bot\Desinstalar"; Filename: "{uninstallexe}"
+Name: "{autoprograms}\KMAO Bot\KMAO Bot"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Start-Kmao.ps1"" -Component bot"; WorkingDir: "{app}"; AppUserModelID: "Kmao.Bot"; Comment: "Iniciar KMAO Bot"
+Name: "{autoprograms}\KMAO Bot\KMAO Bot - Gravar atividade"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Start-Kmao.ps1"" -Component logger"; WorkingDir: "{app}"; AppUserModelID: "Kmao.Logger"; Comment: "KMAO Bot - gravar atividade"
+Name: "{autoprograms}\KMAO Bot\KMAO Bot - Restaurar versao anterior"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Start-Kmao.ps1"" -Rollback"; WorkingDir: "{app}"; AppUserModelID: "Kmao.Rollback"
+Name: "{autoprograms}\KMAO Bot\Desinstalar KMAO Bot"; Filename: "{uninstallexe}"
+
+[InstallDelete]
+; Remove only the legacy shortcuts owned by KMAO when reinstalling/upgrading.
+Type: files; Name: "{autoprograms}\KMAO Bot\Iniciar bot.lnk"
+Type: files; Name: "{autoprograms}\KMAO Bot\Gravar atividade.lnk"
+Type: files; Name: "{autoprograms}\KMAO Bot\Restaurar versao anterior.lnk"
+Type: files; Name: "{autoprograms}\KMAO Bot\Desinstalar.lnk"
 
 [UninstallDelete]
 ; Versions downloaded after installation are application code, never user data.

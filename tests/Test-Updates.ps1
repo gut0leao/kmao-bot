@@ -1,8 +1,9 @@
 # Real cryptography and packages; mocks are limited to network, process startup and UI.
 $ErrorActionPreference = 'Stop'
-$repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$repo = [IO.Path]::GetFullPath((Resolve-Path (Join-Path $PSScriptRoot '..')).ProviderPath)
 . (Join-Path $repo 'lib/Kmao.Common.ps1')
 . (Join-Path $repo 'lib/Kmao.Update.ps1')
+. (Join-Path $repo 'scripts/Kmao.BuildTools.ps1')
 function Assert-True { param([bool]$Condition, [string]$Message) if (!$Condition) { throw $Message } }
 function Assert-Throws {
     param([scriptblock]$Action, [string]$Pattern)
@@ -41,7 +42,7 @@ try {
     [IO.File]::AppendAllText($manifestPath, ' ')
     Assert-Throws { Read-KmaoSignedManifest $manifestPath $signaturePath $public } 'signature'
     [IO.File]::WriteAllText($manifestPath, $original)
-    $wrong = [Security.Cryptography.RSA]::Create(); $wrong.KeySize = 3072
+    $wrong = New-KmaoRsaKey
     try {
         $wrongPublic = Join-Path $temporary 'wrong-public.xml'
         [IO.File]::WriteAllText($wrongPublic, $wrong.ToXmlString($false))

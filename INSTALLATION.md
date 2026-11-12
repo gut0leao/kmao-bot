@@ -1,6 +1,6 @@
 # Instalação, atualização e publicação
 
-A versão de teste inicial é `0.2.0`. O instalador e o atualizador estão implementados;
+A versão atual de teste é `0.2.1`. O instalador e o atualizador estão implementados;
 nenhuma Release ou chave de produção é criada automaticamente ao clonar o projeto.
 
 ## Como a instalação funciona
@@ -14,11 +14,19 @@ O instalador Inno Setup roda por usuário, sem elevação, e usa por padrão:
 ├── current.json                  # Versão ativa
 ├── previous.json                 # Versão anterior, quando disponível
 └── versions\
-    └── 0.2.0\                   # Código completo e independente por versão
+    └── 0.2.1\                   # Código completo e independente por versão
 ```
 
-O menu Iniciar recebe atalhos para bot, logger, restauração da versão anterior e
-desinstalação. Configurações, frases e gravações continuam em
+O menu Iniciar recebe os atalhos **KMAO Bot**, **KMAO Bot - Gravar atividade**,
+**KMAO Bot - Restaurar versao anterior** e **Desinstalar KMAO Bot**, na pasta
+KMAO Bot. Os atalhos do aplicativo têm identidades próprias para o Windows.
+
+O instalador original da versão 0.2.0 criou atalhos com nomes genéricos, como
+**Iniciar bot** e **Gravar atividade**. Nessa instalação, pesquise esses nomes ou
+abra `shell:programs\KMAO Bot` pelo `Win+R`. A correção dos nomes é aplicada
+pelo instalador; ao reinstalar com o pacote corrigido, os atalhos antigos são
+removidos. Uma atualização apenas pelo ZIP não recria os atalhos do instalador.
+ Configurações, frases e gravações continuam em
 `%USERPROFILE%\.kmao-bot`, inclusive para quem já usava a distribuição portátil.
 A desinstalação remove o código e as versões baixadas, preservando a pasta de dados.
 
@@ -26,6 +34,67 @@ Reinstalações não devem ocorrer com componentes ou atualizador em execução.
 instalador verifica seus mutexes e pede que sejam fechados. Ele não força o
 encerramento de processos PowerShell. Cada usuário pode executar uma instância do
 bot e uma do logger por sessão de desktop.
+
+## Desenvolvimento no WSL
+
+O repositório pode permanecer no filesystem Linux (`/home/...`). Use o terminal
+Bash ou Zsh do WSL, a partir da raiz do projeto:
+
+```bash
+./scripts/kmao.sh doctor    # Verifica PowerShell e Inno Setup do Windows
+./scripts/kmao.sh test      # Testes no Windows PowerShell 5.1, sem gerar entrada
+./scripts/kmao.sh keygen    # Uma vez: chaves no perfil do usuário Windows
+./scripts/kmao.sh build     # ZIP assinado, manifesto, assinatura e instalador
+```
+
+O comando usa a interoperabilidade do WSL (`powershell.exe`) e converte os caminhos
+com `wslpath`. O código é acessado pelo caminho UNC `\\wsl.localhost\...`; não é
+necessário mover o repositório para o Windows ou copiar os scripts manualmente.
+Os arquivos de distribuição ficam em `dist/release/` no próprio repositório WSL.
+
+Para gerar o `.exe`, instale o **Inno Setup 6 no Windows**. O comando procura o
+compilador no PATH e nos diretórios de instalação usuais. Se ele estiver em outro
+local, passe o caminho usando a notação WSL, com aspas quando houver espaços:
+
+```bash
+./scripts/kmao.sh build --iscc '/mnt/c/Program Files (x86)/Inno Setup 6/ISCC.exe'
+```
+
+O build verifica o compilador antes de criar a saída ou ler as chaves. Para gerar
+somente o ZIP assinado e seus metadados, use `./scripts/kmao.sh build --skip-installer`.
+Para apenas empacotar os scripts, sem chaves nem Inno Setup:
+
+```bash
+./scripts/kmao.sh export --output ./dist/portable-teste
+```
+
+Por padrão, `keygen` grava em `%USERPROFILE%\.kmao-signing` **do Windows**, usando a
+mesma identidade das instruções PowerShell abaixo. Ele não cria uma segunda chave
+no home Linux. Para gerar chaves em outro local, use um diretório de um disco do
+Windows, onde a proteção por ACL está disponível:
+
+```bash
+./scripts/kmao.sh keygen \
+  --private-key '/mnt/c/caminho-seguro/private.xml' \
+  --public-key '/mnt/c/caminho-seguro/public.xml'
+./scripts/kmao.sh build \
+  --private-key '/mnt/c/caminho-seguro/private.xml' \
+  --public-key '/mnt/c/caminho-seguro/public.xml' \
+  --output ./dist/release-teste
+```
+
+As opções de caminho aceitam caminhos Linux absolutos ou relativos ao diretório
+atual. Não passe `C:\...` diretamente às opções do wrapper; use `/mnt/c/...`.
+Arquivos de chave e pastas de saída existentes não são substituídos.
+`./scripts/kmao.sh --help` lista as opções.
+
+Se `powershell.exe` não for encontrado ou o WSL impedir a execução de `.exe`,
+verifique a interoperabilidade e o PATH do Windows no WSL. O `pwsh` instalado no
+Linux continua útil para testes portáveis, mas não substitui os testes de sessão
+nem o Inno Setup do Windows. O workflow do GitHub Actions permanece outra opção
+para gerar o instalador num runner Windows.
+
+Referência: [interoperabilidade entre WSL e Windows](https://learn.microsoft.com/en-us/windows/wsl/filesystems#run-windows-tools-from-linux).
 
 ## Preparar a identidade de publicação (uma vez)
 
@@ -67,8 +136,8 @@ Execute os testes antes de gerar uma versão para convidados:
 
 O resultado fica em `dist/release/`:
 
-- `kmao-setup-0.2.0.exe`: instalação inicial ou reinstalação manual.
-- `kmao-0.2.0.zip`: código da versão usado pelo atualizador.
+- `kmao-setup-0.2.1.exe`: instalação inicial ou reinstalação manual.
+- `kmao-0.2.1.zip`: código da versão usado pelo atualizador.
 - `kmao-manifest.json` e `kmao-manifest.sig`: metadados e assinatura RSA/SHA-256.
 - `payload/` e `installer-source/`: pastas intermediárias, não destinadas à Release.
 
@@ -92,17 +161,17 @@ os quatro arquivos como artifact. As chaves temporárias ficam no diretório do
 runner e são excluídas no final; não são enviadas como artifacts.
 
 Por padrão, não cria Release. Se `create_draft` estiver habilitado, cria apenas um
-**rascunho não publicado**, marcado como prerelease, na tag `v0.2.0`. A publicação
+**rascunho não publicado**, marcado como prerelease, na tag `v0.2.1`. A publicação
 para os convidados depende de uma ação posterior no GitHub. Os workflows de
 validação em pushes/PRs não recebem nem precisam da chave de publicação.
 
 ## Publicar uma nova versão para testes
 
-1. Atualize `VERSION` com três números, por exemplo `0.2.1`, e escreva as notas em
+1. Atualize `VERSION` com três números, por exemplo `0.2.2`, e escreva as notas em
    `CHANGELOG.md`. O canal inicial usa versões numéricas e a marca prerelease do
    GitHub; sufixos como `-beta.1` não são suportados neste protocolo.
 2. Gere os quatro arquivos na mesma execução, usando a mesma chave de assinatura.
-3. Anexe instalador, ZIP, manifesto e assinatura à Release `v0.2.1` do repositório
+3. Anexe instalador, ZIP, manifesto e assinatura à Release `v0.2.2` do repositório
    `gut0leao/kmao-bot` e marque-a como **prerelease**.
 4. Revise o rascunho e publique quando decidir compartilhar o teste.
 
