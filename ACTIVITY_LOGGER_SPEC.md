@@ -1,32 +1,115 @@
-> Atualização 0.3.5: a configuração ativa do bot e do logger foi unificada em
-> `%USERPROFILE%\.kmao-bot\config\application.conf`, com comentários em português.
-> O template atual é `config/application.conf.example`. Referências a `kmao.conf`
-> abaixo pertencem à especificação original; os valores desse arquivo no perfil
-> são importados na primeira execução e o original é preservado. O logger aplica
-> os parâmetros ao iniciar uma nova gravação.
+# Activity Logger — especificação técnica atual
 
-# Activity Logger - Especificação Técnica
+Referência: código **0.3.5**. Este documento descreve a implementação atual em
+[activity_logger.ps1](activity_logger.ps1), [lib/Kmao.Windows.cs](lib/Kmao.Windows.cs)
+e nas bibliotecas compartilhadas. Substitui o desenho inicial de 2025.
 
-> Documento histórico do desenho inicial. Os caminhos, o ciclo de captura e o tratamento de erros evoluíram; consulte o [README](README.md) para o funcionamento atual.
+## Finalidade e execução
 
-## Visão Geral
-Sistema de logging de eventos de teclado e mouse para análise de produtividade pessoal, usando apenas ferramentas nativas do Windows 11.
+O logger captura eventos globais de mouse e teclado na sessão de desktop Windows
+e grava CSVs locais. Funciona separadamente do bot, com uma instância por sessão.
+Use KMAO Bot - Gravar atividade no menu Iniciar ou, no pacote completo,
+`init_recording.bat`/`activity_logger.ps1` em Windows PowerShell 5.1.
 
-## Objetivos
-- Registrar eventos de teclado e mouse durante o dia de trabalho
-- Usar formato compacto e eficiente para grandes volumes de dados
-- Não requerer instalação de dependências externas
+O uso instalado passa pelo lançador, que pode oferecer atualização. O logger não
+tem interface própria de bandeja. Ctrl+C, a duração configurada e o pedido de
+parada do atualizador encerram a gravação. Os lançadores preservam o código de
+saída do script.
 
-## Tecnologia Base
-- **PowerShell** com Windows API calls
-- **APIs utilizadas:**
-  - `user32.dll` - Hooks de teclado e mouse
-  - `SetWindowsHookEx` - Hooks globais
-  - `GetMessage` - Processamento de mensagens
+## Configuração
 
-## Formato de Saída
+O arquivo atual é `%USERPROFILE%\.kmao-bot\config\application.conf`, comum ao bot
+e ao logger. O template é [config/application.conf.example](config/application.conf.example).
+Cada variável tem comentário em português na linha anterior.
 
-### Estrutura do Arquivo CSV
+| Parâmetro do logger | Padrão | Intervalo válido | Efeito |
+| --- | --- | --- | --- |
+| `MOUSE_SAMPLING_INTERVAL` | 200 | 1 a 60000 ms | Intervalo mínimo entre amostras de movimento |
+| `RECORDING_DURATION_MINUTES` | 480 | 0 a 525600 min | Duração máxima; 0 grava até interrupção |
+
+O arquivo é lido e validado ao iniciar uma gravação. Editá-lo não reconfigura uma
+sessão em curso: encerre e inicie o logger para aplicar. Como a configuração é
+unificada, campos inválidos de qualquer grupo impedem o início da gravação.
+
+Na primeira criação, valores explícitos dos antigos `config/bot.conf` e
+`config/kmao.conf` no perfil são importados e os originais permanecem intactos.
+Um `application.conf` existente é preservado. O arquivo aceita inteiros sem aspas,
+comentários `#` e linhas vazias; rejeita chaves desconhecidas/duplicadas, valores
+fora dos limites e pares mínimo/máximo inconsistentes. Uma importação de legado
+inválido falha com diagnóstico, sem modificar o original.
+
+A abertura de Configurações na bandeja pausa somente o bot, não uma gravação já
+em andamento. Veja [TRAY_BOT.md](TRAY_BOT.md#configuração) para o arquivo completo.
+
+## Captura nativa
+
+`Kmao.WindowsInput` instala os hooks em uma thread C# dedicada, com processamento
+de mensagens do Windows. Os callbacks não executam scriptblocks PowerShell nem
+escrevem no disco: colocam registros em uma fila concorrente.
+
+Os dois hooks são instalados dentro da região protegida por `try/finally`. Uma
+falha parcial também tenta remover o hook instalado. A captura sinaliza falhas
+de instalação, callbacks, fila e limpeza; não trata indiscriminadamente qualquer
+exceção como interrupção do usuário.
+
+São observados:
+
+- Cliques esquerdo, direito, central e auxiliares, sem distinguir o botão no CSV.
+- Scroll vertical/horizontal, sem direção ou intensidade no registro.
+- Movimento, somente quando a posição mudou e o intervalo mínimo foi atingido.
+- Teclas pressionadas/liberadas, incluindo mensagens de sistema
+  `WM_SYSKEYDOWN`/`WM_SYSKEYUP`; sem amostragem de teclado.
+
+A entrada sintetizada também pode ser capturada. Movimentos marcados do bot são
+registráveis; seus cliques e texto enviados diretamente ao editor do Notepad não
+geram eventos globais de mouse/teclado. A marca exclui entrada própria do cálculo
+de inatividade do bot, não da captura do logger.
+
+## Fila, escrita e encerramento
+
+A fila comporta até **100000 eventos**. Ao exceder o limite, registra falha e
+encerra para evitar perda silenciosa. O consumidor PowerShell drena lotes de até
+1000 e verifica a saúde do produtor entre as esperas. O polling de escrita é de
+25 ms; o flush ocorre após 100 registros pendentes ou quando 10 segundos passaram
+até a próxima passagem pelo consumidor. Esses são limites internos, não opções
+adicionais aceitas no arquivo de configuração.
+
+Os nomes numéricos das teclas nativas são convertidos para `System.Windows.Forms.Keys`
+antes da escrita. O CSV usa UTF-8 sem BOM, cabeçalho e compartilhamento de leitura.
+`FileMode.CreateNew` impede sobrescrever uma gravação existente.
+
+No encerramento, o script tenta, de forma independente:
+
+1. Parar o produtor e remover hooks.
+2. Consumir os registros restantes, mesmo após o produtor parar.
+3. Descarregar e fechar o arquivo.
+4. Liberar os eventos/mutexes da sessão.
+
+Falhas de limpeza são registradas e tornam a saída um erro. O término forçado do
+processo, queda de energia ou erro de disco pode impedir essa sequência e perder
+eventos ainda em memória. Não há recuperação automática de hooks removidos pelo
+Windows nem garantia de gravação após falha de escrita.
+
+## Diretórios e nomes
+
+```text
+%USERPROFILE%\.kmao-bot\
+├── config\application.conf
+├── data\2026-11-12-10-30-45-123-4567-<identificador>-recording.csv
+└── logs\logger-<data-hora>-<pid>-<identificador>.log
+```
+
+O nome do CSV usa `yyyy-MM-dd-HH-mm-ss-fff`, PID e identificador de sessão.
+A data/hora do nome é local; o timestamp de cada evento é Unix em segundos UTC.
+O diretório é obtido pelo perfil do Windows, independentemente do diretório de
+execução. Não são criados CSVs no checkout por padrão.
+
+Cada execução cria um arquivo próprio; não há rotação por tamanho, retenção,
+compressão de gravações antigas ou limpeza automática. Estimativas de volume
+precisam de medição no uso real, pois dependem dos eventos e da amostragem.
+
+## Formato CSV
+
 ```csv
 t,e,x,y,k
 1727621415,mc,1920,540,
@@ -35,186 +118,36 @@ t,e,x,y,k
 1727621418,ku,,,A
 ```
 
-### Campos
-- **t** = Timestamp Unix (segundos desde 1970-01-01)
-- **e** = Tipo de evento (códigos abaixo)
-- **x** = Coordenada X do mouse (vazio para eventos de teclado)
-- **y** = Coordenada Y do mouse (vazio para eventos de teclado)
-- **k** = Tecla pressionada (vazio para eventos de mouse)
+| Campo | Conteúdo |
+| --- | --- |
+| `t` | Timestamp Unix, segundos UTC |
+| `e` | `mc`: clique; `mm`: movimento; `sc`: scroll; `kd`: tecla pressionada; `ku`: tecla liberada |
+| `x`, `y` | Coordenadas de tela do mouse; vazias para teclado |
+| `k` | Nome da tecla virtual; vazio para mouse |
 
-### Códigos de Eventos
+O arquivo não informa títulos de janela, nomes de processos, texto do documento,
+botão clicado ou intensidade do scroll. O nome de tecla não equivale a texto
+Unicode final nem registra composição/idioma como uma mensagem textual.
 
-#### Mouse
-- **mc** = Mouse Click (qualquer botão)
-- **mm** = Mouse Move
-- **sc** = Scroll
+## Logs, prontidão e privacidade
 
-#### Teclado
-- **kd** = Key Down
-- **ku** = Key Up
+Diagnósticos operacionais ficam em `logs/`, separados dos eventos. Incluem nível,
+timestamp, exceções e contagem final de registros, sem duplicar o CSV. A prontidão
+para o atualizador é sinalizada após configuração, hooks e arquivo abertos.
+O protocolo aguarda até 20 segundos pela limpeza ao atualizar.
 
-## Estratégia de Sampling
+Eventos de teclado podem permitir reconstruir informações sensíveis. Use o
+logger apenas com autorização adequada. O KMAO mantém os eventos localmente;
+o lançador instalado consulta o GitHub para atualizações, mas não envia CSVs.
 
-### Mouse
-- **Cliques**: Registrar todos os eventos
-- **Scroll**: Registrar todos os eventos
-- **Movimento**: 
-  - Registrar apenas quando há mudança de posição
-  - Sampling configurável via `MOUSE_SAMPLING_INTERVAL` (padrão: 200ms)
-  - **NÃO registrar se não houve mudança de posição**
+## Validação
 
-### Teclado
-- **Registrar todos os eventos** (key down e key up)
-- Volume baixo, não requer sampling
+`Test-Core.ps1` exercita a escrita/limpeza reais com produtor simulado, incluindo
+falhas parciais. `Test-Configuration.ps1` cobre importação e validação;
+`Test-Lifecycle.ps1` cobre eventos/mutexes. `Test-Windows.ps1` exige desktop
+interativo e move o cursor em um pixel para verificar hooks e cancelamento.
 
-## Organização de Arquivos
-
-### Estrutura de Diretórios
-```
-config/
-├── kmao.conf                          # Arquivo de configuração ativo
-└── kmao.conf.example                  # Template de configuração
-
-data/
-├── 2025-09-29-08-30-123-recording.csv
-├── 2025-09-29-14-15-456-recording.csv
-└── 2025-09-30-09-00-789-recording.csv
-```
-
-### Nomenclatura de Arquivos
-**Formato:** `yyyy-mm-dd-hh-mm-sss-recording.csv`
-
-Onde:
-- **yyyy-mm-dd** = Data de início da gravação
-- **hh-mm** = Hora e minuto de início (24h)
-- **sss** = Milissegundos de início
-- **recording.csv** = Sufixo fixo
-
-**Exemplo:** `2025-09-29-08-30-123-recording.csv`
-- Gravação iniciada em 29/09/2025 às 08:30:123
-
-## Arquivo de Configuração
-
-### Localização
-- **Arquivo ativo:** `config/kmao.conf`
-- **Template:** `config/kmao.conf.example`
-
-### Comportamento
-- O programa **deve ler** o arquivo de configuração antes de iniciar a execução
-- Se `config/kmao.conf` não existir, usar valores padrão
-- O template `kmao.conf.example` serve como referência de configuração
-
-### Variáveis Disponíveis
-
-#### Sampling de Mouse
-```bash
-# Intervalo mínimo entre registros de movimento do mouse (em milissegundos)
-MOUSE_SAMPLING_INTERVAL=200
-```
-
-#### Duração da Gravação
-```bash
-# Tempo máximo de gravação em minutos (0 = ilimitado)
-RECORDING_DURATION_MINUTES=480
-```
-
-### Formato do Arquivo
-- Formato simples `VARIAVEL=VALOR`
-- Linhas iniciadas com `#` são comentários
-- Valores numéricos sem aspas
-- Strings podem usar aspas opcionalmente
-
-### Exemplo de Arquivo de Configuração
-```bash
-# Configuração do KMAO Activity Logger
-
-# Intervalo de sampling para movimento do mouse (ms)
-MOUSE_SAMPLING_INTERVAL=200
-
-# Duração máxima da gravação em minutos
-# 480 = 8 horas de trabalho
-# 0 = gravação ilimitada (até interrupção manual)
-RECORDING_DURATION_MINUTES=480
-
-# Configurações futuras podem ser adicionadas aqui
-# BUFFER_SIZE=1000
-# LOG_LEVEL=INFO
-```
-
-## Estimativas de Performance
-
-### Volume de Dados
-- **~25-30 bytes** por evento
-- **~50 eventos/minuto** (com sampling otimizado)
-- **~3.6MB por dia** (8 horas de trabalho)
-- **~1MB quando comprimido** (.gz)
-
-### Otimizações
-- Buffer de escrita para melhor performance
-- Rotação automática de arquivos por sessão
-- Compressão opcional de arquivos antigos
-
-## Dados Capturados
-
-### Eventos de Mouse
-- Coordenadas X,Y de cliques
-- Coordenadas X,Y de movimento (apenas quando há mudança)
-- Eventos de scroll
-- Timestamp preciso de cada evento
-
-### Eventos de Teclado
-- Tecla pressionada/liberada
-- Timestamp preciso
-- Códigos de tecla padrão
-
-## Considerações de Implementação
-
-### Performance
-- Implementar sampling inteligente para movimento do mouse
-- Usar buffers para escrita em lotes
-- Evitar logging desnecessário (posição inalterada)
-
-### Privacidade
-- Não registrar janelas ativas
-- Não registrar conteúdo de teclado sensível (opcional)
-- Dados ficam localmente no repositório
-
-### Robustez
-- Tratamento de erros de I/O
-- Recuperação automática de hooks
-- Logging de erros em arquivo separado
-- **Finalização automática** baseada em `RECORDING_DURATION_MINUTES`
-- Finalização limpa ao atingir tempo limite
-
-## Análise Posterior
-
-### Tipos de Análise Possíveis
-- **Atividade por período**: Eventos por hora/dia
-- **Padrões de movimento**: Áreas mais clicadas
-- **Velocidade de digitação**: Análise temporal de teclas
-- **Períodos de inatividade**: Gaps nos timestamps
-- **Estatísticas de produtividade**: Volume de atividade
-
-### Ferramentas de Análise
-- Excel/LibreOffice (CSV nativo)
-- Python/Pandas para análises complexas
-- PowerBI para visualizações
-- Ferramentas de linha de comando (awk, grep)
-
-## Próximos Passos
-
-1. Criar estrutura de diretórios (`config/`, `data/`)
-2. Implementar arquivo de configuração `kmao.conf.example`
-3. Implementar script PowerShell base
-4. Implementar leitor de configuração
-5. Testar hooks de teclado e mouse
-6. Implementar sistema de sampling configurável
-7. Criar sistema de logging em CSV
-8. Testes de performance e volume
-9. Scripts de análise complementares
-
----
-
-**Data de Criação:** 2025-09-29  
-**Versão:** 1.0  
-**Autor:** Sistema de Logging de Atividade
+Testes prolongados, Ctrl+C real, gravação durante atualização, falhas de disco e
+políticas de segurança em outras máquinas continuam no [roadmap](ROADMAP.md).
+Análise estatística, painéis de produtividade e recuperação de hooks não fazem
+parte da implementação atual.

@@ -1,10 +1,14 @@
 # Assinatura do publicador Windows
 
-A distribuição para computadores com Controle Inteligente de Aplicativos (Smart
-App Control/SAC) está pendente de um certificado de assinatura de código emitido
-por um provedor confiável e da validação de uma instalação com SAC ativo.
-Não há certificado de produção configurado. Esta preparação do build, sozinha,
-não torna os instaladores 0.3.1 e anteriores confiáveis para o Windows.
+Referência: código **0.3.5**. Os pacotes atuais de teste não têm assinatura
+Authenticode do publicador. O suporte ao assinador está implementado, mas falta
+obter/configurar certificado ou serviço e validar o conjunto em máquinas protegidas.
+A instalação já funcionou na máquina do responsável, e também houve bloqueios de
+componentes em testes. Aceitação de um build não comprova a dos seguintes.
+
+O build sem publicador exige `--allow-unsigned` explicitamente. A assinatura RSA
+do manifesto continua existindo nesse modo. Não é uma declaração de compatibilidade
+com Smart App Control, nem alteração da proteção do Windows.
 
 ## Duas assinaturas diferentes
 
@@ -33,13 +37,15 @@ Opções a avaliar antes de contratar:
   EUA e Canadá; não é uma opção confirmada para pessoa física no Brasil.
 
 A emissão, a validação de identidade e eventuais pagamentos devem ser feitos pelo
-responsável pelo projeto. Não envie PFX, chaves, PIN, senha ou documentos ao chat.
+responsável pelo projeto. Não inclua PFX, chaves, PIN, senhas ou documentos de identidade em arquivos do
+projeto; use os canais apropriados do provedor para a validação.
 
-Fontes consultadas em 12/11/2026:
+Referências de emissão consultadas em 12/11/2026; confirme disponibilidade e
+condições diretamente com o provedor antes de solicitar ou contratar:
 
 - [Microsoft: certificados e assinatura para SAC](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/code-signing-for-smart-app-control).
 - [Microsoft: disponibilidade do Artifact Signing](https://learn.microsoft.com/en-us/azure/artifact-signing/quickstart).
-- [SignPath Foundation: condições](https://signpath.org/terms.html).
+- [SignPath Foundation: condições](https://signpath.org/terms.html) e [solicitação](https://signpath.org/apply).
 - [Microsoft: App Control e PowerShell](https://learn.microsoft.com/en-us/powershell/scripting/security/app-control/how-app-control-works).
 - [Inno Setup: SignedUninstaller](https://jrsoftware.org/ishelp/topic_setup_signeduninstaller.htm).
 
@@ -101,13 +107,15 @@ exportar a chave privada nem gerar outra chave RSA do atualizador.
 Assinar apenas o `.exe` final não cobre o desinstalador nem as cópias temporárias
 do Inno Setup. Não altere arquivos assinados após gerar o manifesto.
 
-Com a DLL presente, o aplicativo a carrega diretamente. O checkout e o export
-portátil simples ainda podem compilar os fontes C# ao iniciar para desenvolvimento;
-isso não constitui uma distribuição validada para SAC.
+O bot nativo incorpora o código C# no executável. O logger e as entradas diretas
+PowerShell usam a DLL quando presente; sem ela, o checkout/export simples compila
+os fontes ao iniciar. Esses modos de desenvolvimento não demonstram validação
+para SAC. `Kmao.Bot.exe.config` é configuração de runtime .NET; as preferências
+do usuário ficam separadamente em `config/application.conf` no perfil.
 
-## Desenvolvimento e CI
+## Builds de teste e CI
 
-Build sem Authenticode agora exige consentimento explícito para desenvolvimento:
+Build sem Authenticode exige a opção explícita:
 
 ```bash
 ./scripts/kmao.sh build --allow-unsigned --output ./dist/dev-sem-authenticode
@@ -120,14 +128,16 @@ seja escolhido e sua autenticação configurada no runner. Configure a variável
 repositório `KMAO_AUTHENTICODE_SIGNER` com o caminho do adaptador `.ps1` presente
 no runner e acrescente a etapa de autenticação do serviço escolhido; um token
 local não fica automaticamente disponível em runners hospedados do GitHub. O workflow de validação
-continua funcionando. Nenhuma publicação ocorre nesta preparação.
+continua funcionando. A escolha/emissão do certificado e a integração do serviço
+continuam pendentes. O publicador local pode publicar um pacote de teste sem
+Authenticode; ele não verifica nem promete aceitação pelo Windows.
 
 ## Aceitação antes de publicar
 
 - Emitir o certificado ou obter aprovação no programa escolhido.
 - Executar um build com o provedor real; conferir assinaturas e timestamp de
-  scripts, DLL, dispatcher estável, instalador e desinstalador.
-- Testar instalação, Run/Stop/Logs/Exit, logger, atualização e desinstalação em
+  scripts, executável nativo, DLL, dispatcher estável, instalador e desinstalador.
+- Testar instalação, Run/Stop/Configurações/Logs/Exit, logger, atualização e desinstalação em
   Windows com SAC ativo. Não modificar a política nem as raízes de confiança.
 - Se houver bloqueio, usar os eventos CodeIntegrity/AppLocker para identificar
   o componente específico. Assinatura não garante aceitação por toda política

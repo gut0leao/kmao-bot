@@ -1,119 +1,74 @@
-# Próximas melhorias: instalação e atualização
+# Estado do projeto e próximos passos
 
-Status: implementação inicial concluída no código. O projeto inclui instalador
-Inno Setup, lançador, atualizador com confirmação, assinatura de pacotes, troca
-atômica de versão, recuperação e workflows de validação/build manual. O pacote
-portátil continua disponível. Consulte [INSTALLATION.md](INSTALLATION.md).
+Referência: código **0.3.5**, definido em [VERSION](VERSION). O produto está em
+fase de testes pessoais e com convidados, com downloads públicos no GitHub e
+sem divulgação ampla. Os guias operacionais estão no [README](README.md).
 
-Validação local: testes portáveis e testes no Windows PowerShell 5.1 acessando o
-repositório pelo WSL, incluindo código, criptografia, empacotamento, continuidade
-sem conexão/recusa, recuperação e eventos/mutexes entre processos. A compilação do
-`.exe` também foi validada no Windows via WSL. Os hooks em desktop e a validação
-manual completa de instalação, atualização e desinstalação seguem como critérios
-de aceitação para os testes com convidados. A identidade RSA de produção e
-as releases iniciais já existem. A 0.3.2 prepara Authenticode, mas a emissão do
-certificado e a validação com Smart App Control ativo ainda estão pendentes.
-Veja [CODE_SIGNING.md](CODE_SIGNING.md).
-A mudança de esquema de configuração é rejeitada; a migração permanece futura.
+## Implementado
 
-## Público e distribuição
+| Área | Estado atual |
+| --- | --- |
+| Instalação | Inno Setup por usuário, atalhos identificáveis e desinstalação que preserva dados |
+| Atualização | Consulta ao iniciar, confirmação, manifesto RSA, hashes por arquivo e versão instalada separadamente |
+| Recuperação | Estado atômico, versão anterior e diário para atualização interrompida |
+| Sessões | Uma instância de bot e uma de logger por sessão de desktop; encerramento cooperativo |
+| Bandeja | Run, Stop, Configurações, Logs, Open logs folder, About e Exit |
+| Notepad | Documento próprio, mensagem gradual, foco confirmado e descarte no encerramento normal |
+| Atividade | Pausa cinza por atividade; retomada após inatividade; Stop manual preservado |
+| Identidade | `Kmao.Bot.exe` com descrição KMAO Bot e PowerShell 5.1 hospedado no processo |
+| Configuração | 31 parâmetros comentados em `application.conf`, importação dos legados e validação a cada entrada em Running |
+| Logger | Hooks com message pump, fila limitada, CSV e esvaziamento final |
+| WSL | Diagnóstico, testes, export, build e publicação pelo `kmao.sh` |
+| Publicação | `publish` usa VERSION e quatro assets, com rascunho e simulação local |
+| Authenticode | Infraestrutura de build/adaptador pronta; certificado/provedor ainda não configurado |
 
-- Uso pessoal inicialmente, com algumas pessoas convidadas para testar.
-- Downloads públicos em GitHub Releases, sem divulgação ampla nesta fase.
-- Um link público pode ser descoberto ou compartilhado; isso não oferece controle
-  de acesso nem confidencialidade.
-- Um único canal de versões de teste no início, com versão explícita, notas de
-  alteração e pacote correspondente a cada publicação.
-- A publicação da primeira versão será uma etapa posterior, quando o responsável
-  pelo projeto decidir compartilhá-la.
+As configurações legadas são importadas de forma aditiva na 0.3.5. Isso não altera
+o esquema 1 do protocolo de atualização. Migrações entre esquemas incompatíveis
+continuam pendentes; esses pacotes são rejeitados pelo atualizador.
 
-## Instalação
+## Validação realizada
 
-- Usar Inno Setup para gerar um instalador `.exe`, mantendo os scripts atuais.
-- Instalar por usuário, sem solicitar privilégios de administrador, em
-  `%LOCALAPPDATA%\Programs\KMAO Bot`.
-- Distribuir todas as dependências do aplicativo, incluindo `lib/`, modelos de
-  configuração e modelo de frases.
-- Criar atalhos no menu Iniciar para o bot e o logger, usando um lançador comum.
-- Registrar a versão instalada e permitir a desinstalação pelo Windows.
-- Manter configurações, frases, gravações e logs em `%USERPROFILE%\.kmao-bot`.
-- Preservar esses dados em reinstalações, atualizações e na desinstalação padrão.
-- Prever a transição da execução portátil para a instalada, reutilizando a pasta
-  de dados existente.
-- Não criar serviço nem tarefa agendada para verificação em segundo plano.
+- Testes portáveis e no Windows PowerShell 5.1 via WSL para sintaxe, estrutura
+  nativa de entrada, configuração/migração e cancelamento com monitor simulado.
+- Assinaturas RSA, integridade/extração, seleção do canal, indisponibilidade de
+  rede, recusa, recuperação e coordenação com eventos/mutexes reais.
+- Host nativo: identidade, execução STA, saída, códigos de retorno e `finally`.
+- Bandeja: cores, Run/Stop, configuração antes de Running e acompanhamento de logs.
+- Notepad e processo completo em testes interativos, com perfis temporários e
+  documentos próprios; prontidão em até 30 s e encerramento em até 20 s.
+- Compilação do instalador Windows diretamente do checkout WSL.
+- Instalação e atualização automática confirmadas pelo responsável em sua máquina.
 
-## Atualização ao iniciar
+Essas evidências não substituem uma matriz de compatibilidade nem confirmam
+aceitação universal pelo Smart App Control. Os pacotes atuais de teste continuam
+sem Authenticode, embora as atualizações sejam autenticadas por RSA.
 
-1. Ao abrir o bot ou o logger, o lançador consulta a versão disponível no canal
-   de testes e compara com a instalada.
-2. Se houver uma versão mais recente, exibe as versões, as notas de alteração e
-   pede confirmação para atualizar. Uma versão recusada pode ser oferecida
-   novamente na próxima inicialização.
-3. Se o usuário recusar, não houver atualização ou a consulta falhar por falta de
-   conexão, inicia o componente solicitado na versão instalada.
-4. Se o usuário aceitar, baixa o pacote para uma área temporária e valida sua
-   integridade e autenticidade antes de executar ou substituir qualquer arquivo.
-5. Coordena o encerramento limpo dos componentes do KMAO em execução, incluindo
-   gravação dos eventos restantes do logger e remoção dos hooks. Se não for
-   possível encerrá-los com segurança, adia a instalação.
-6. Um processo separado aplica a atualização e reabre o componente solicitado.
-   Não substitui arquivos enquanto o bot ou o logger ainda os utiliza.
+## Prioridades pendentes
 
-Toda atualização exige confirmação. O lançador deve continuar distinguindo
-claramente falhas de atualização das falhas do próprio bot ou logger, com logs
-que ajudem a diagnosticar ambas.
+1. **Assinatura do publicador:** obter certificado Code Signing ou aprovação em
+   programa de assinatura, configurar o provedor e validar o conjunto em Windows
+   protegido. Veja [CODE_SIGNING.md](CODE_SIGNING.md).
+2. **Aceitação com convidados:** instalar/desinstalar em outras contas sem admin,
+   verificar atalhos, identidade na bandeja, atualização aceita/recusada e execução
+   sem internet. Não substituir assets já publicados para repetir um teste.
+3. **Uso prolongado:** verificar logger por duração, Ctrl+C, atualização durante
+   gravação, falhas de disco/permissão e preservação dos eventos finais.
+4. **Compatibilidade do Notepad:** testar restauração de sessões, abas, idiomas,
+   documentos salvos/substituídos, indisponibilidade da automação e recusa de foco.
+5. **Operação contínua:** avaliar rotação/retenção de logs e gravações, limpeza de
+   versões antigas/downloads interrompidos e recuperação de hooks removidos.
 
-## Integridade, recuperação e configuração
+## Critérios para compartilhar uma versão
 
-- Validar os pacotes por assinatura, com chave pública confiável distribuída no
-  atualizador; um hash isolado não autentica o publicador.
-- Manter a chave privada de publicação fora do repositório e dos pacotes,
-  armazenando-a de forma segura para assinar as versões.
-- Avaliar certificado de assinatura de código para instalador e scripts como
-  decisão adicional de distribuição; nenhum certificado foi adquirido ou definido.
-- Rejeitar pacotes incompletos, adulterados, incompatíveis ou de origem inesperada.
-- Impedir atualizações simultâneas por duas instâncias do lançador.
-- Preservar a versão anterior até concluir a instalação e permitir sua restauração
-  caso a atualização falhe.
-- Não sobrescrever configurações ou frases personalizadas. Se novas versões
-  alterarem o formato da configuração, definir migração e cópia de segurança.
-- Não incluir dados pessoais, gravações, logs ou chaves privadas nas Releases.
+- Código e documentação coerentes com VERSION e CHANGELOG.
+- Testes adequados à mudança concluídos e limitações registradas.
+- Pacotes completos, manifesto e assinatura produzidos juntos, com a identidade
+  RSA existente e sem dados pessoais/chaves privadas.
+- Confirmação de preservação de configurações, frases, gravações e notas pessoais
+  em atualização, encerramento normal e recuperação.
+- Publicação feita explicitamente pelo responsável como prerelease; toda
+  atualização pelo aplicativo continua exigindo confirmação.
 
-## Sequência de implementação
-
-1. **Instalador e lançador:** versionamento, empacotamento completo, atalhos,
-   instalação por usuário, desinstalação e preservação de dados.
-2. **Publicação:** geração reproduzível em Windows, testes, assinatura e preparação
-   das Releases. Publicar somente quando for decidido compartilhar a versão.
-3. **Atualizador com confirmação:** consulta ao iniciar, download validado,
-   coordenação do encerramento, aplicação, recuperação e reinício.
-
-## Validação necessária
-
-- Instalação e desinstalação em uma conta sem privilégios de administrador.
-- Atalhos e inicialização do bot e do logger fora da pasta de instalação.
-- Atualização aceita e recusada, versão já atualizada e execução sem internet.
-- Download interrompido, assinatura inválida, pacote incompatível e instalação
-  incompleta, mantendo uma versão utilizável do aplicativo.
-- Duas inicializações simultâneas e tentativa de atualização durante uma gravação.
-- Encerramento dos hooks, gravação final do CSV e reinício do componente solicitado.
-- Preservação de frases, configurações e gravações, incluindo eventuais migrações.
-- Recuperação da versão anterior após falha.
-
-Referências: [Inno Setup](https://jrsoftware.org/isinfo.php),
-[instalação sem administrador](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm),
-[GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github/about-releases)
-e [assinatura de scripts PowerShell](https://learn.microsoft.com/powershell/module/microsoft.powershell.core/about/about_signing).
-
-
-## Implementado na 0.3.0: Notepad próprio e bandeja
-
-- Janela isolada e maximizada do Notepad com mensagem inicial e texto restrito ao editor.
-- Ícones de robô verde/cinza, Run/Stop, Logs ao vivo, About e Exit.
-- Descarte sem salvar do documento criado pelo bot e preservação de outras abas/janelas.
-- Pausa e preservação do documento quando seu conteúdo deixa de ser identificado como pertencente ao bot.
-- Integração com o encerramento cooperativo e a prontidão exigidos pelo atualizador.
-- Testes Windows dos ícones, controles, logs e do processo completo usando perfil temporário.
-
-Uso e limites: [TRAY_BOT.md](TRAY_BOT.md). O fluxo real de atualização entre Releases
-publicadas continua sendo validado com as instalações de teste.
+Não há serviço ou tarefa agendada de atualização, telemetria de uso, retenção
+automática de dados, análise de produtividade pronta ou garantia de recuperação
+após término forçado. Essas capacidades não devem ser anunciadas como entregues.

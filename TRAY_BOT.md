@@ -1,185 +1,192 @@
-# Bot pela bandeja e Notepad próprio — 0.3.5
+# Bandeja, Notepad e configuração — 0.3.5
 
-## Uso
+## Iniciar e reconhecer a versão
 
-Inicie **KMAO Bot** pelo menu Iniciar. O programa cria uma janela própria do
-Notepad do Windows, maximizada, e digita a mensagem inicial, caractere por caractere:
+Abra KMAO Bot pelo menu Iniciar da instalação. O cabeçalho da bandeja mostra
+`KMAO 0.3.5` para esse código; o ícone pode estar na área de ícones ocultos.
+O build Windows usa `Kmao.Bot.exe`, com descrição KMAO Bot e identidade `Kmao.Bot`.
+O PowerShell 5.1 e o código da interface/automação rodam nesse processo.
+
+A interface começa cinza até a validação. Com configuração válida e foco
+confirmado, habilita Running e digita no seu Notepad maximizado:
 
 ```text
 KMAO BOT is running...
 ```
 
-O bot começa em modo **Run**. O ícone na área de notificação é uma carinha de robô
-verde; ao detectar mouse ou teclado do usuário, pausa e fica cinza. No Windows 11, o ícone pode estar dentro da área de
-ícones ocultos, acessível pela seta da bandeja.
+A mensagem entra caractere por caractere, usando os parâmetros `STARTUP_*`.
+Atividade durante a abertura pode manter o bot em pausa; a mensagem continua do
+ponto em que parou ao retomar. O cabeçalho do documento faz parte da identificação
+de propriedade e deve permanecer enquanto o bot estiver usando esse documento.
 
-Clique com o botão direito no ícone:
+## Menu
 
-Desde a versão 0.3.3, o cabeçalho desse menu mostra a versão em execução, por exemplo
-`KMAO 0.3.3`. Ele permite confirmar a versão após uma atualização.
-
-| Opção | Comportamento |
+| Item | Comportamento |
 | --- | --- |
-| Run | Aparece quando parado. Retoma o bot e ativa/maximiza seu Notepad; cria outro se a janela anterior foi fechada. |
-| Stop | Pausa manualmente e mantém o Notepad aberto. Só retoma ao selecionar Run; a inatividade não desfaz o Stop manual. |
-| Configurações | Pausa manualmente e abre `config/application.conf` do perfil no Notepad. Salve e selecione Run para validar e aplicar. |
-| Logs | Abre um console PowerShell com as últimas 50 linhas do log da execução e `Get-Content -Wait`, equivalente a `tail -f`. |
-| Open logs folder | Abre `%USERPROFILE%\.kmao-bot\logs` no Explorador de Arquivos para consultar os logs do bot, lançador e atualizador. |
-| About | Abre o projeto `https://github.com/gut0leao/kmao-bot` no navegador. |
-| Exit | Encerra o bot, descarta seu documento sem salvar e remove o ícone da bandeja. |
+| Run | Solicita leitura/validação das opções, maximiza/ativa o Notepad próprio e habilita Running após confirmar o foco. Cria outro documento se o anterior foi fechado/substituído. |
+| Stop | Pausa manualmente, mantém o documento aberto e só retoma com Run. |
+| Configurações | Pausa manualmente e abre o arquivo unificado no Notepad. Salve e selecione Run. |
+| Logs | Abre um console PowerShell com as últimas 50 linhas do log do bot e acompanhamento contínuo (`Get-Content -Wait`). |
+| Open logs folder | Abre a pasta `logs` do perfil no Explorador de Arquivos. |
+| About | Abre o repositório do projeto no navegador. |
+| Exit | Encerra o bot, remove o ícone e descarta seu documento sem salvar. |
 
-Um duplo clique no ícone alterna entre Run e Stop. Fechar a janela de Logs não
-encerra o bot. Os logs pertencem à execução atual e não incluem as frases digitadas.
+Run aparece quando pausado; Stop, quando habilitado. Duplo clique solicita a mesma
+alternância, com validação antes de Running. Fechar o console de Logs não encerra
+o bot. Falhas ao abrir editor, logs ou navegador são registradas no log do bot.
 
-O modo Run habilita a automação, mas ainda respeita o limite de inatividade e os
-intervalos de `config/application.conf`. Por padrão, aguarda 60 segundos de inatividade e
-mais um intervalo aleatório de 30 a 239 segundos antes de interagir. A cor verde
-indica Run habilitado; ela não significa que o bot esteja digitando naquele instante.
+## Pausa e retomada
 
-Ao detectar atividade do usuário, o ícone fica cinza. Após
-`IDLE_TIME_THRESHOLD` segundos de inatividade (60 por padrão), o bot maximiza seu
-Notepad, tenta colocá-lo em primeiro plano e só fica verde após confirmar o foco.
-Se houver atividade durante essa transição ou o Windows recusar o foco, permanece
-cinza. Stop manual e documento fechado/substituído não retomam automaticamente.
-A mensagem inicial começa logo após a abertura, sem aguardar o intervalo entre
-ciclos. Ela também pausa com atividade do usuário e continua do ponto em que parou.
-As frases seguintes continuam sendo digitadas caractere por caractere.
+Verde indica Running habilitado, inclusive durante esperas; não significa que
+haja digitação naquele instante. Mouse/teclado externos e perda de foco/aba
+cancelam o ciclo e deixam o ícone cinza. Entrada marcada do próprio bot não conta
+como retorno do usuário.
 
-## Escopo da interação
+Após `IDLE_TIME_THRESHOLD` segundos de inatividade, o bot relê a configuração,
+considera o novo limite, maximiza/ativa seu Notepad e confirma o foco antes de
+ficar verde. Atividade durante a transição, Stop manual, encerramento solicitado,
+configuração inválida ou recusa de foco impedem a retomada. Documento fechado ou
+substituído exige Run; não é recriado automaticamente por inatividade.
 
-- O alvo é sempre o documento do Notepad criado pelo bot. A seleção do alvo não
-  acompanha outras janelas em primeiro plano.
-- A escrita é enviada diretamente ao controle de edição desse documento, como
-  texto Unicode, incluindo caracteres especiais e emojis. Não usa teclas globais
-  para digitar nem envia Enter para outros programas.
-- Os cliques ficam no retângulo central da área de edição, limitado ao tamanho
-  atual do editor. Antes de mover/clicar, o bot confirma o foco, a inatividade e
-  que o ponto pertence ao editor e não está coberto por outro controle/janela. O
-  clique é enviado ao próprio editor, sem pressionar botões globalmente em outros
-  aplicativos. O movimento do cursor usa entrada identificada como sendo do bot.
-- Se você usar mouse/teclado, trocar para outra janela ou selecionar outra aba do
-  Notepad, o ciclo é interrompido e o ícone fica cinza. O foco só é recuperado
-  após o tempo configurado de inatividade ou uma ação explícita Run.
-- Run é uma ação explícita que pode trazer o Notepad do bot de volta ao foco.
-- Se fechar o Notepad, o bot fica em Stop. Use Run para criar um novo documento.
-- Se substituir o documento ou remover a mensagem inicial, o bot pausa e preserva
-  o conteúdo. Use Run para abrir outra janela própria. O bot verifica somente o
-  prefixo fixo de identificação, sem registrar o conteúdo do documento.
+Os ciclos usam um intervalo aleatório adicional. Com os padrões atuais, são
+60 segundos de inatividade e mais 30 a 239 segundos por ciclo. A mensagem inicial
+é separada desses ciclos e pode começar imediatamente após a abertura/Run.
 
-Mantenha a mensagem inicial no documento enquanto quiser que ele seja usado pelo
-bot. Esse documento é descartável: não o use para anotações que deseja preservar.
-Se salvar manualmente o documento ou abrir outro arquivo na mesma aba, ele deixa
-de ser descartável: o bot pausa e o preserva. Use Run para criar outro documento.
+## Configuração
 
-## Notepad do Windows 11 e encerramento
+O arquivo editado pelo menu é:
 
-O Notepad moderno pode restaurar sessões anteriores e agrupar arquivos em abas.
-O KMAO usa os controles de automação do Notepad para criar uma nova janela isolada,
-sem reutilizar uma anotação restaurada. Se a primeira janela recém-aberta já for
-um documento vazio e sem título reconhecido, ela é usada diretamente, evitando
-abrir um segundo Notepad. Havendo um documento anterior/restaurado, o bot cria
-seu documento separado e preserva o anterior; por isso outras janelas pessoais
-podem continuar abertas. Localizações não reconhecidas usam a criação isolada.
-As outras janelas e abas são preservadas.
-A abertura do aplicativo pelo Windows pode restaurar essas outras sessões; o bot
-não altera essa preferência global do Notepad nem fecha as sessões restauradas.
+```text
+%USERPROFILE%\.kmao-bot\config\application.conf
+```
 
-Ao sair, o bot limpa o texto do seu documento, remove a marca de alteração e fecha
-somente a própria aba/janela. Se houver outras abas na janela, preserva-as. Ele não
-mata processos Notepad, não salva automaticamente arquivos e não altera o conteúdo
-de outras anotações. Se não puder confirmar a propriedade do documento, preserva-o
-em vez de apagá-lo. Uma falha de automação é registrada nos logs.
+Ele contém 31 parâmetros do bot/logger, com comentário em português na linha
+anterior de cada variável. Os valores padrão vêm de
+[config/application.conf.example](config/application.conf.example).
 
-Use Exit para finalizar normalmente. Se fechar primeiro a janela do Notepad pelo
-X, o próprio Notepad pode salvar sua sessão antes de o bot perceber o fechamento;
-para garantir o descarte do texto pelo KMAO, prefira Exit no ícone da bandeja.
-Fechamento forçado pelo Gerenciador de Tarefas,
-queda de energia ou término abrupto do processo podem impedir a limpeza. O menu Exit
-e o encerramento cooperativo do atualizador passam pela rotina de descarte.
+1. Abra Configurações; o bot entra em pausa manual para não interromper a edição.
+2. Edite e salve com Ctrl+S.
+3. Selecione Run. Toda a configuração é relida e validada antes de ficar verde.
 
-A interface requer **Windows PowerShell 5.1**, Notepad instalado e um desktop Windows
-interativo e desbloqueado. Notepad clássico e o moderno são tratados separadamente;
-a automação de menus do Notepad moderno precisa estar disponível. Diálogos de
-primeira execução, permissões ou versões com controles incompatíveis podem impedir
-a abertura. Nesse caso, o programa registra o erro e preserva os documentos existentes.
+A releitura também ocorre na inicialização e na retomada por inatividade. Durante
+um ciclo, os valores em memória permanecem coerentes. Um arquivo inválido não
+substitui parcialmente esse conjunto e não traz o Notepad à frente para iniciar
+uma interação. O bot continua cinza e registra o motivo em `bot-*.log`; corrija
+o arquivo e use Run. Erros repetidos iguais não são registrados a cada polling.
 
-A janela de console do bot é ocultada quando pertence exclusivamente ao lançamento
-independente do aplicativo. Consoles compartilhados/interativos são preservados.
+O arquivo aceita `NOME=inteiro` sem aspas, comentários `#` e linhas vazias. Campos
+omitidos usam o padrão; nomes desconhecidos/duplicados e valores fora dos limites
+são rejeitados. Nos pares aleatórios, mínimo deve ser menor que máximo, e máximo
+é exclusivo. Por exemplo, `MIN_CLICKS=1` e `MAX_CLICKS=4` resultam em 1, 2 ou 3.
 
-## Nome nas configurações do Windows
+Os parâmetros atuais e padrões são:
 
-Desde a 0.3.4, os pacotes gerados no Windows incluem `Kmao.Bot.exe`. O lançador
-consulta atualizações e inicia esse executável, que hospeda o Windows PowerShell
-5.1 e a bandeja dentro do próprio processo. A descrição/produto do executável é
-`KMAO Bot`, com o código da interface/automação incorporado ao executável e identidade de aplicativo `Kmao.Bot`, igual à dos atalhos existentes.
-Isso evita atribuir o novo ícone ao processo `Windows PowerShell` nas configurações
-da barra de tarefas. Não copia nem renomeia o executável do PowerShell.
+| Parâmetro | Padrão | Unidade e regra |
+| --- | --- | --- |
+| `MIN_INTERVAL` | 30 | Tempo mínimo entre ciclos de interação, em segundos (1 a 86400). |
+| `MAX_INTERVAL` | 240 | Limite superior exclusivo entre ciclos, em segundos; deve ser maior que MIN_INTERVAL. |
+| `RECT_WIDTH` | 400 | Largura máxima da área central de cliques no editor do bot, em pixels (1 a 32768). |
+| `RECT_HEIGHT` | 200 | Altura máxima da área central de cliques no editor do bot, em pixels (1 a 32768). |
+| `MIN_CLICKS` | 1 | Quantidade mínima de cliques por ciclo (1 a 100). |
+| `MAX_CLICKS` | 4 | Limite superior exclusivo de cliques; deve ser maior que MIN_CLICKS e no máximo 100. |
+| `TYPING_CHANCE` | 70 | Chance de digitar uma frase após os cliques, em porcentagem (0 a 100). |
+| `IDLE_TIME_THRESHOLD` | 60 | Tempo sem atividade do usuário antes da retomada automática, em segundos (1 a 86400). |
+| `MIN_CHAR_DELAY` | 40 | Pausa mínima entre caracteres das frases, em milissegundos (0 a 60000). |
+| `MAX_CHAR_DELAY` | 200 | Limite superior exclusivo entre caracteres, em ms; maior que MIN_CHAR_DELAY, até 60000. |
+| `HESITATION_CHANCE` | 8 | Chance de acrescentar uma pausa de hesitação entre caracteres, em porcentagem (0 a 100). |
+| `MIN_HESITATION` | 300 | Pausa mínima adicional de hesitação, em milissegundos (0 a 60000). |
+| `MAX_HESITATION` | 800 | Limite superior exclusivo da hesitação, em ms; maior que MIN_HESITATION, até 60000. |
+| `SPACE_MIN_DELAY` | 30 | Pausa mínima ao digitar um espaço, em milissegundos (0 a 60000). |
+| `SPACE_MAX_DELAY` | 120 | Limite superior exclusivo da pausa em espaços, em ms; maior que SPACE_MIN_DELAY, até 60000. |
+| `PUNCT_MIN_DELAY` | 50 | Pausa mínima adicional após pontuação, em milissegundos (0 a 60000). |
+| `PUNCT_MAX_DELAY` | 150 | Limite superior exclusivo após pontuação, em ms; maior que PUNCT_MIN_DELAY, até 60000. |
+| `CURSOR_MIN_DELAY` | 80 | Pausa mínima entre mover o cursor e clicar, em milissegundos (0 a 60000). |
+| `CURSOR_MAX_DELAY` | 200 | Limite superior exclusivo antes do clique, em ms; maior que CURSOR_MIN_DELAY, até 60000. |
+| `MULTI_CLICK_MIN_DELAY` | 200 | Pausa mínima entre cliques do mesmo ciclo, em milissegundos (0 a 60000). |
+| `MULTI_CLICK_MAX_DELAY` | 500 | Limite superior exclusivo entre cliques, em ms; maior que MULTI_CLICK_MIN_DELAY, até 60000. |
+| `PRE_TYPING_MIN_DELAY` | 500 | Espera mínima antes de começar uma frase, em milissegundos (0 a 60000). |
+| `PRE_TYPING_MAX_DELAY` | 1500 | Limite superior exclusivo antes da frase, em ms; maior que PRE_TYPING_MIN_DELAY, até 60000. |
+| `PRE_ENTER_MIN_DELAY` | 200 | Pausa mínima antes da quebra de linha, em milissegundos (0 a 60000). |
+| `PRE_ENTER_MAX_DELAY` | 600 | Limite superior exclusivo antes da quebra de linha, em ms; maior que PRE_ENTER_MIN_DELAY, até 60000. |
+| `FINAL_MIN_DELAY` | 200 | Pausa mínima ao terminar um ciclo, em milissegundos (0 a 60000). |
+| `FINAL_MAX_DELAY` | 800 | Limite superior exclusivo ao terminar o ciclo, em ms; maior que FINAL_MIN_DELAY, até 60000. |
+| `STARTUP_MIN_CHAR_DELAY` | 45 | Pausa mínima entre letras da mensagem inicial, em milissegundos (0 a 60000). |
+| `STARTUP_MAX_CHAR_DELAY` | 110 | Limite superior exclusivo da mensagem inicial, em ms; maior que STARTUP_MIN_CHAR_DELAY, até 60000. |
+| `MOUSE_SAMPLING_INTERVAL` | 200 | Intervalo mínimo entre amostras de movimento do mouse no logger, em ms (1 a 60000). |
+| `RECORDING_DURATION_MINUTES` | 480 | Duração máxima de gravação do logger, em minutos (0 a 525600); 0 grava até encerrar. |
 
-A correção chega pela atualização automática, sem reinstalação dos atalhos. O
-Windows pode manter entradas antigas em cache; a entrada anterior de Windows
-PowerShell pode continuar visível mesmo após sair da versão antiga. O KMAO não
-apaga o cache ou altera as preferências de outros aplicativos. Veja a
+Tempos internos de polling, prontidão, encerramento e escrita do logger são
+limites da implementação/protocolo; não são nomes adicionais aceitos no arquivo.
+O logger aplica suas duas opções somente ao iniciar uma nova gravação.
+
+### Importação e recuperação
+
+Se `application.conf` ainda não existir, o primeiro componente que iniciar cria o
+arquivo completo com os valores explícitos de `config/bot.conf` e
+`config/kmao.conf` já existentes no perfil. Os originais são preservados; valores
+não definidos usam os padrões. Um legado inválido impede essa criação e produz
+um erro de inicialização, sem modificar o original.
+
+Um arquivo unificado existente não é substituído. Depois da importação, edite
+somente ele. Na recuperação para uma versão anterior à 0.3.5, a versão antiga
+usa seus arquivos legados; alterações do unificado não são copiadas de volta.
+Dados antigos que ainda estão no checkout precisam ser copiados para o perfil
+antes dessa primeira importação, conforme o [README](README.md).
+
+As frases continuam em `%USERPROFILE%\.kmao-bot\phrases.txt`, uma por linha UTF-8.
+Elas são lidas ao iniciar o bot, não a cada Run; reinicie após alterar esse arquivo.
+A janela de configuração é um documento do usuário, não o alvo descartável do bot.
+
+## Documento próprio e segurança do alvo
+
+Uma janela recém-aberta, vazia e com título sem nome reconhecido é usada
+diretamente. Se houver notas anteriores/restauradas, o bot usa os controles de
+automação para criar seu documento separado. Outras janelas/abas são preservadas;
+podem continuar visíveis, e a preferência de restauração de sessões não é alterada.
+Idiomas/controles não reconhecidos seguem a criação isolada ou geram diagnóstico.
+
+A escrita Unicode é enviada diretamente ao controle do documento próprio, sem
+teclas globais nem Enter para outros programas. Os cliques também são endereçados
+a esse editor; o movimento do cursor é marcado como entrada do bot. Antes das
+ações e durante as esperas, são verificados atividade, sessão, foco e área do editor.
+Os cliques são limitados ao retângulo central configurado e ao editor visível.
+
+Ao fechar o documento, ele permanece fechado até Run. Ao salvar manualmente,
+abrir outro arquivo na aba ou remover a identificação, o bot procura reconhecer
+a perda de propriedade, pausa e preserva o documento. Não use a janela descartável
+para anotações pessoais nem dependa dessa verificação como mecanismo de salvamento.
+
+Exit e a parada cooperativa limpam o texto próprio e fecham somente sua aba/janela.
+Não matam processos Notepad. O X do Notepad pode salvar a sessão antes de o bot
+perceber; término forçado, falha de automação e energia interrompida podem impedir
+a limpeza. Prefira Exit para o descarte normal.
+
+## Nome no Windows e execução de desenvolvimento
+
+O host próprio tem descrição/produto KMAO Bot e a identidade dos atalhos existentes.
+A mudança chega pelo ZIP, sem recriar atalhos. O Windows pode manter uma entrada
+antiga de Windows PowerShell no cache da bandeja. O KMAO não apaga esse cache nem
+altera preferências de outros aplicativos. Veja a
 [documentação da área de notificação](https://learn.microsoft.com/en-us/windows/win32/shell/notification-area).
 
-Executar `dev.ps1` diretamente no checkout continua sendo um modo de desenvolvimento
-hospedado em PowerShell, com esse nome no Windows. Para testar a identidade própria,
-use o build completo e o lançador/atalho da instalação. A janela de Logs continua
-sendo um console PowerShell separado, aberto somente pela opção Logs.
+`dev.ps1` direto ou export simples sem host ainda rodam dentro do PowerShell e
+podem ser identificados assim pelo Windows. Use o build completo e o lançador
+instalado para verificar a identidade própria. O console de Logs continua separado.
 
-## Configuração e compatibilidade
-
-As configurações e frases existentes continuam em `%USERPROFILE%\.kmao-bot`.
-Na 0.3.5, o arquivo principal é `%USERPROFILE%\.kmao-bot\config\application.conf`.
-Ele reúne todos os parâmetros de bot/logger, incluindo os tempos da mensagem
-inicial, com comentários em português e unidades acima de cada variável.
-Na primeira execução, os valores explícitos dos antigos `bot.conf` e `kmao.conf`
-são importados, e os originais são preservados. Depois disso, edite `application.conf`.
-Em recuperação para uma versão antiga, ela volta a usar seus arquivos legados;
-editações feitas apenas no arquivo unificado não são copiadas de volta para eles.
-
-Configurações pausa manualmente antes de abrir o arquivo. Salve com Ctrl+S e use
-Run: o bot relê e valida todo o arquivo antes de ficar verde. A inicialização e
-a retomada por inatividade fazem a mesma releitura. O novo limite de inatividade
-é considerado já na decisão de retomar. O bot mantém uma cópia coerente durante
-cada ciclo; um arquivo inválido não substitui parcialmente os valores em memória,
-não ativa o Notepad e mantém o ícone cinza, com diagnóstico no log. Corrija e use
-Run novamente. O logger aplica suas opções ao iniciar uma nova gravação.
-
-As mesmas opções de intervalos, quantidade de cliques e chance de digitação continuam
-válidas. A área de cliques agora é limitada ao editor, em vez da tela principal.
-O Activity Logger continua independente. Ele pode registrar os movimentos do
-cursor feitos pelo bot; os cliques e textos enviados diretamente ao editor não
-geram eventos globais de mouse/teclado no logger.
-
-Os ícones verde/cinza são desenhados pelo próprio código com GDI+, sem dependência
-de imagens externas. Os callbacks da bandeja rodam em uma thread STA C# e alteram
-apenas o estado do controlador; não executam scriptblocks PowerShell nessa thread.
-
-## Desenvolvimento e testes pelo WSL
+## Testes e limites
 
 ```bash
 ./scripts/kmao.sh test
 ./scripts/kmao.sh desktop-test
 ```
 
-O primeiro comando inclui compilação dos componentes, ícones, ciclo da bandeja,
-acompanhamento de logs e testes portáveis/sessão/build. O segundo é explicitamente
-interativo: testa também o executável nativo com perfil e eventos privados; abre e descarta um documento de teste e valida o processo completo do
-bot com perfil temporário e ciclos de interação desabilitados. Feche outra instância
-do KMAO antes desse teste. Outros documentos do Notepad não são usados como alvo.
+A suíte inclui configuração/migração, rejeição de valores inválidos, reentrada em
+Running, bandeja, host e coordenação com atualizador. O comando interativo abre e
+descarta documentos próprios. O teste nativo usa perfil e eventos privados; o
+legado de processo completo exige que outra instância do bot esteja encerrada.
 
-No teste de processo completo, o bot precisa sinalizar prontidão dentro de 30 segundos
-e encerrar dentro de 20 segundos após o pedido de parada do atualizador. Isso valida
-a integração com o protocolo de atualização das versões anteriores.
-
-## Atualização automática
-
-A 0.3.1 corrige a consulta à API do GitHub no Windows PowerShell 5.1, mantendo
-o protocolo e a identidade de assinatura. Usuários das versões até 0.3.0 precisam
-instalar `kmao-setup-0.3.1.exe` manualmente uma vez: o defeito está no atualizador
-já instalado. As próximas versões poderão ser oferecidas ao abrir os atalhos,
-com confirmação antes da instalação.
-
-Esses recursos estão no código versionado e não exigem recriar os atalhos para
-funcionar. A publicação deve incluir o ZIP, o instalador e o par manifesto/assinatura
-produzidos juntos. A versão anterior permanece disponível para recuperação.
+O bot requer desktop interativo desbloqueado, Windows PowerShell 5.1 e automação
+do Notepad disponível. Diálogos iniciais, políticas do Windows, versões/idiomas e
+restauração de abas precisam de validação na máquina alvo. Não é possível garantir
+foco ou limpeza após falha do processo/sistema. O [roadmap](ROADMAP.md) registra
+as verificações pendentes.

@@ -1,326 +1,257 @@
-# Instalação, atualização e publicação
+# Instalação, build e publicação — 0.3.5
 
-A versão do código é `0.3.5`, com configuração unificada e releitura em cada Run.
-Os pacotes de teste são gerados explicitamente sem Authenticode. A assinatura do
-publicador Windows permanece pendente de emissão do certificado e validação com
-Smart App Control ativo. Veja [CODE_SIGNING.md](CODE_SIGNING.md).
-O instalador e o atualizador estão implementados;
-nenhuma Release ou chave de produção é criada automaticamente ao clonar o projeto.
+[VERSION](VERSION) define a versão do código; [CHANGELOG.md](CHANGELOG.md) reúne
+as notas. O projeto possui instalador e atualizador. Authenticode ainda depende
+de certificado/provedor: os pacotes atuais de teste são gerados explicitamente
+sem essa assinatura, mantendo a assinatura RSA do manifesto.
 
-## Como a instalação funciona
+## Instalar no Windows
 
-O instalador Inno Setup roda por usuário, sem elevação, e usa por padrão:
+Baixe o instalador da release escolhida no
+[GitHub do projeto](https://github.com/gut0leao/kmao-bot/releases), feche bot,
+logger e atualizador e execute `kmao-setup-0.3.5.exe` para essa versão.
+O instalador Inno Setup é por usuário, sem exigir administrador.
 
 ```text
 %LOCALAPPDATA%\Programs\KMAO Bot\
-├── Start-Kmao.ps1                # Despachante estável dos atalhos
-├── update-public-key.xml         # Identidade confiável de publicação
-├── current.json                  # Versão ativa
-├── previous.json                 # Versão anterior, quando disponível
+├── Start-Kmao.ps1
+├── update-public-key.xml
+├── current.json
+├── previous.json                 # Quando há versão anterior
 └── versions\
-    └── 0.3.1\                   # Código completo e independente por versão
+    └── 0.3.5\
+        ├── Kmao.Bot.exe
+        ├── Kmao.Bot.exe.config
+        ├── dev.ps1 / activity_logger.ps1
+        ├── Launch-Kmao.ps1 / Apply-KmaoUpdate.ps1
+        ├── lib\
+        └── config\
 ```
 
-O menu Iniciar recebe os atalhos **KMAO Bot**, **KMAO Bot - Gravar atividade**,
-**KMAO Bot - Restaurar versao anterior** e **Desinstalar KMAO Bot**, na pasta
-KMAO Bot. Os atalhos do aplicativo têm identidades próprias para o Windows.
+O menu Iniciar recebe KMAO Bot, KMAO Bot - Gravar atividade, KMAO Bot - Restaurar
+versao anterior e Desinstalar KMAO Bot. As configurações e dados permanecem em
+`%USERPROFILE%\.kmao-bot`, inclusive após a desinstalação padrão.
 
-O instalador original da versão 0.2.0 criou atalhos com nomes genéricos, como
-**Iniciar bot** e **Gravar atividade**. Nessa instalação, pesquise esses nomes ou
-abra `shell:programs\KMAO Bot` pelo `Win+R`. A correção dos nomes é aplicada
-pelo instalador; ao reinstalar com o pacote corrigido, os atalhos antigos são
-removidos. Uma atualização apenas pelo ZIP não recria os atalhos do instalador.
- Configurações, frases e gravações continuam em
-`%USERPROFILE%\.kmao-bot`, inclusive para quem já usava a distribuição portátil.
-A desinstalação remove o código e as versões baixadas, preservando a pasta de dados.
+O lançador consulta atualizações antes de iniciar o componente. No bot, ele inicia
+`Kmao.Bot.exe` e acompanha sua saída. O executável hospeda Windows PowerShell 5.1,
+interface e automação no próprio processo. O logger continua em PowerShell.
+Atalhos existentes funcionam com esse fluxo; o ZIP não recria atalhos do instalador.
 
-Reinstalações não devem ocorrer com componentes ou atualizador em execução. O
-instalador verifica seus mutexes e pede que sejam fechados. Ele não força o
-encerramento de processos PowerShell. Cada usuário pode executar uma instância do
-bot e uma do logger por sessão de desktop.
+A versão 0.2.0 criou atalhos genéricos. Reinstalar com um instalador posterior
+corrige esses nomes. Versões até 0.3.0 também precisam de uma instalação manual
+posterior para corrigir a leitura da API do GitHub; o próprio atualizador antigo
+não consegue obter essa correção. Use um instalador publicado da 0.3.1 ou posterior.
 
-## Bandeja e Notepad próprio
+O Windows pode bloquear arquivos sem assinatura/reputação reconhecida. Isso é
+independente da validação RSA do KMAO. Veja [CODE_SIGNING.md](CODE_SIGNING.md).
 
-Desde a 0.3.0, o bot abre um Notepad próprio e roda pela bandeja, com Run/Stop, Logs, About e
-Exit. O [guia da interface](TRAY_BOT.md) detalha a pausa, o descarte sem salvar e a
-preservação de outros documentos. Esses recursos estão no código versionado e não exigem alterações nos atalhos.
+## Configuração e dados
 
-**Correção da consulta de atualizações:** as versões até 0.3.0 não interpretam
-corretamente a lista da API no Windows PowerShell 5.1. Feche o bot e o logger e
-execute `kmao-setup-0.3.1.exe` manualmente uma vez. Os dados em
-`%USERPROFILE%\.kmao-bot` são preservados. Depois disso, os atalhos da instalação
-consultam novas prereleases ao iniciar e registram o resultado nos logs `launcher-*.log`.
+Configurações no menu da bandeja abre
+`%USERPROFILE%\.kmao-bot\config\application.conf`. A primeira criação reúne os
+valores explícitos dos antigos `bot.conf` e `kmao.conf` no perfil e mantém ambos
+intactos. O template é [config/application.conf.example](config/application.conf.example).
+
+O bot valida e relê o arquivo a cada entrada em Running. Abrir Configurações pausa
+manualmente; salve e escolha Run. O logger aplica as opções na próxima gravação.
+A [referência de configuração](TRAY_BOT.md#configuração) explica os 31 parâmetros,
+a importação, valores inválidos e o uso de arquivos legados em recuperação.
+
+Frases ficam em `phrases.txt`, CSVs em `data/` e diagnósticos em `logs/`, todos
+sob a pasta do perfil. Não copie dados pessoais para o diretório do código.
 
 ## Desenvolvimento no WSL
 
-O repositório pode permanecer no filesystem Linux (`/home/...`). Use o terminal
-Bash ou Zsh do WSL, a partir da raiz do projeto:
+O checkout pode permanecer em `/home/...`; não é preciso copiar o repositório
+para um disco Windows. Execute Bash ou Zsh com interoperabilidade Windows ativa:
 
 ```bash
-./scripts/kmao.sh doctor    # Verifica PowerShell e Inno Setup do Windows
-./scripts/kmao.sh test      # Testes de núcleo, sessão, bandeja e build no Windows
-./scripts/kmao.sh desktop-test # Interativo: Notepad próprio e encerramento do bot
-./scripts/kmao.sh keygen    # Uma vez: chaves no perfil do usuário Windows
-./scripts/kmao.sh build --authenticode-signer /mnt/c/caminho/Provider.ps1 # Distribuição
+./scripts/kmao.sh doctor
+./scripts/kmao.sh test
+./scripts/kmao.sh desktop-test
 ```
 
-O comando usa a interoperabilidade do WSL (`powershell.exe`) e converte os caminhos
-com `wslpath`. O código é acessado pelo caminho UNC `\\wsl.localhost\...`; não é
-necessário mover o repositório para o Windows ou copiar os scripts manualmente.
-Os arquivos de distribuição ficam em `dist/release/` no próprio repositório WSL.
+`doctor` verifica Windows PowerShell e Inno Setup. `test` executa a suíte no
+Windows via `powershell.exe`, incluindo build UNC com chaves temporárias.
+`desktop-test` é interativo: abre/descarta documentos próprios e valida processos
+com perfis temporários. Feche outra sessão do bot para o teste legado de singleton.
 
-Para gerar o `.exe`, instale o **Inno Setup 6 no Windows**. O comando procura o
-compilador no PATH e nos diretórios de instalação usuais. Se ele estiver em outro
-local, passe o caminho usando a notação WSL, com aspas quando houver espaços:
+Para os testes Python do wrapper/publicador no Linux:
 
 ```bash
-./scripts/kmao.sh build --authenticode-signer /mnt/c/caminho/Provider.ps1 \
-  --iscc '/mnt/c/Program Files (x86)/Inno Setup 6/ISCC.exe'
+python3 tests/test_wsl_bridge.py
+python3 tests/test_publish_release.py
 ```
 
-O build verifica o compilador antes de criar a saída ou ler as chaves. Para desenvolvimento sem Authenticode, use `--allow-unsigned` explicitamente;
-esse modo não resolve o bloqueio pelo SAC. Para gerar
-somente o ZIP assinado e seus metadados, use `./scripts/kmao.sh build --skip-installer`.
-Para apenas empacotar os scripts, sem chaves nem Inno Setup:
+O wrapper passa caminhos convertidos por `wslpath`, sem avaliá-los como código.
+Use caminhos Linux, por exemplo `/mnt/c/Program Files (x86)/Inno Setup 6/ISCC.exe`.
+Não passe `C:\...` às opções Bash. O `pwsh` Linux é útil para testes portáveis,
+mas não compila o host nativo nem substitui os testes Windows.
+
+## Preparar a chave RSA uma vez
+
+O padrão do WSL aponta para o perfil **Windows**:
 
 ```bash
-./scripts/kmao.sh export --output ./dist/portable-teste
+./scripts/kmao.sh keygen
 ```
 
-Por padrão, `keygen` grava em `%USERPROFILE%\.kmao-signing` **do Windows**, usando a
-mesma identidade das instruções PowerShell abaixo. Ele não cria uma segunda chave
-no home Linux. Para gerar chaves em outro local, use um diretório de um disco do
-Windows, onde a proteção por ACL está disponível:
+Os arquivos são `%USERPROFILE%\.kmao-signing\private.xml` e `public.xml`. Se já
+existem, não gere outra identidade. O comando recusa sobrescrever chaves e aplica
+proteção ACL à chave privada em disco Windows. Faça backup seguro e mantenha a
+chave privada fora do Git, dos pacotes e dos logs.
 
-```bash
-./scripts/kmao.sh keygen \
-  --private-key '/mnt/c/caminho-seguro/private.xml' \
-  --public-key '/mnt/c/caminho-seguro/public.xml'
-./scripts/kmao.sh build \
-  --private-key '/mnt/c/caminho-seguro/private.xml' \
-  --public-key '/mnt/c/caminho-seguro/public.xml' \
-  --authenticode-signer /mnt/c/caminho/Provider.ps1 \
-  --output ./dist/release-teste
-```
+Para caminhos próprios, use `--private-key` e `--public-key` em `keygen`/`build`.
+Não gere chaves privadas no filesystem WSL; use o local padrão ou `/mnt/c/...`.
 
-As opções de caminho aceitam caminhos Linux absolutos ou relativos ao diretório
-atual. Não passe `C:\...` diretamente às opções do wrapper; use `/mnt/c/...`.
-Arquivos de chave e pastas de saída existentes não são substituídos.
-`./scripts/kmao.sh --help` lista as opções.
+A chave pública é instalada pelo `.exe` e preservada nas reinstalações. Rotação
+de identidade exige uma migração deliberada; o protocolo 1 não a automatiza.
 
-Se `powershell.exe` não for encontrado ou o WSL impedir a execução de `.exe`,
-verifique a interoperabilidade e o PATH do Windows no WSL. O `pwsh` instalado no
-Linux continua útil para testes portáveis, mas não substitui os testes de sessão
-nem o Inno Setup do Windows. O workflow do GitHub Actions permanece outra opção
-para gerar o instalador num runner Windows.
+## Gerar o pacote Windows
 
-Referência: [interoperabilidade entre WSL e Windows](https://learn.microsoft.com/en-us/windows/wsl/filesystems#run-windows-tools-from-linux).
+Instale Inno Setup 6 no Windows. A versão vem de VERSION. Faça commit do estado
+que será distribuído antes de gerar os pacotes.
 
-## Preparar a identidade de publicação (uma vez)
-
-No PowerShell, a partir da raiz do repositório:
-
-```powershell
-.\scripts\New-KmaoSigningKey.ps1 `
-  -PrivateKeyPath "$env:USERPROFILE\.kmao-signing\private.xml" `
-  -PublicKeyPath "$env:USERPROFILE\.kmao-signing\public.xml"
-```
-
-O comando cria uma chave RSA de 3072 bits e restringe o acesso ao arquivo privado.
-Ele recusa gravar a chave privada dentro do repositório ou substituir uma chave
-existente. Faça uma cópia de segurança segura da chave privada. Ela é necessária
-para assinar todas as atualizações reconhecidas pelas instalações existentes.
-Nunca a inclua em commits, Releases, ZIPs ou mensagens.
-
-A assinatura dos pacotes é independente de Authenticode. Não há certificado
-de assinatura de código configurado. O build de distribuição agora exige um
-provedor; o modo de desenvolvimento `--allow-unsigned` pode ser bloqueado pelo
-Windows e não deve ser distribuído como compatível com Smart App Control. A chave pública é incorporada ao
-instalador inicial e preservada nas reinstalações. A rotação da identidade não faz
-parte do protocolo 1; trocar de chave exige uma migração deliberada das instalações.
-
-## Gerar o instalador localmente
-
-É necessário Windows PowerShell 5.1 e [Inno Setup 6](https://jrsoftware.org/isinfo.php).
-Execute os testes antes de gerar uma versão para convidados:
-
-```powershell
-.\tests\Test-Core.ps1
-.\tests\Test-Updates.ps1
-.\tests\Test-Lifecycle.ps1
-
-.\scripts\Build-KmaoRelease.ps1 `
-  -PrivateKeyPath "$env:USERPROFILE\.kmao-signing\private.xml" `
-  -PublicKeyPath "$env:USERPROFILE\.kmao-signing\public.xml" `
-  -AuthenticodeSigner "C:\caminho\Provider.ps1" `
-  -IsccPath "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-```
-
-O resultado fica em `dist/release/`:
-
-- `kmao-setup-0.3.5.exe`: instalação inicial ou reinstalação manual.
-- `kmao-0.3.5.zip`: código da versão usado pelo atualizador.
-- `kmao-manifest.json` e `kmao-manifest.sig`: metadados e assinatura RSA/SHA-256.
-- `kmao-release-notes.md`: notas somente da versão atual, para usar na descrição da Release.
-- `payload/` e `installer-source/`: pastas intermediárias, não destinadas à Release.
-
-O build recusa um diretório de saída existente. Para outra geração, use
-`-OutputDirectory` com uma pasta nova. `-SkipInstaller` permite testar assinatura e
-pacote em Linux/PowerShell 7, sem gerar o `.exe`. Os bytes do ZIP podem variar entre
-builds; cada assinatura corresponde ao pacote exato produzido naquela execução.
-
-## Gerar pelo GitHub Actions
-
-O workflow **Build release (manual)** é acionado somente em `workflow_dispatch`.
-Configure previamente os secrets do repositório, usando GitHub CLI autenticado:
-
-```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:USERPROFILE\.kmao-signing\private.xml")) | gh secret set KMAO_RELEASE_KEY_BASE64
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("$env:USERPROFILE\.kmao-signing\public.xml")) | gh secret set KMAO_RELEASE_PUBLIC_KEY_BASE64
-```
-
-O workflow testa no Windows PowerShell, gera o instalador com Inno Setup e entrega
-os quatro anexos de distribuição e o arquivo de notas como artifact. As chaves temporárias ficam no diretório do
-runner e são excluídas no final; não são enviadas como artifacts.
-
-O workflow de release está temporariamente bloqueado antes da leitura de segredos
-até configurar o provedor Authenticode no runner. As instruções seguintes descrevem
-o fluxo após essa configuração.
-
-Por padrão, não cria Release. Se `create_draft` estiver habilitado, cria apenas um
-**rascunho não publicado**, marcado como prerelease, na tag `v0.3.1`. A publicação
-para os convidados depende de uma ação posterior no GitHub. Os workflows de
-validação em pushes/PRs não recebem nem precisam da chave de publicação.
-
-## Testar a atualização para a 0.3.5
-
-A bandeja agora pertence ao processo `Kmao.Bot.exe`, com descrição `KMAO Bot`.
-A entrada antiga de PowerShell pode ficar no cache do Windows.
-
-O pacote de teste, assinado com a mesma chave RSA das instalações existentes,
-é gerado sem Authenticode explicitamente:
+Para os testes atuais, sem Authenticode:
 
 ```bash
 ./scripts/kmao.sh build --allow-unsigned --output ./dist/release-0.3.5
 ```
 
-Se esse pacote já foi gerado, use-o sem repetir o build na mesma pasta. Após o
-commit e o push, publique com `./scripts/kmao.sh publish`. Feche o bot instalado e
-abra novamente pelo atalho do menu Iniciar. Aceite a oferta de atualização e confira
-`KMAO 0.3.5` no cabeçalho do menu da bandeja. A opção Configurações abre
-`%USERPROFILE%\.kmao-bot\config\application.conf`; os valores legados são importados
-sem alterar os arquivos originais. Salve e selecione Run para aplicar. Não execute o instalador 0.3.4 manualmente para esse teste,
-pois o objetivo é validar a atualização da instalação 0.3.3 pelo ZIP assinado.
+O manifesto continua assinado com RSA. Sem `--allow-unsigned`, o build exige um
+provedor Authenticode. As duas opções são mutuamente exclusivas. Quando houver
+um provedor configurado:
 
-Se não aparecer a oferta, consulte os arquivos `launcher-*.log` em
-`%USERPROFILE%\.kmao-bot\logs`. O pacote sem Authenticode ainda pode ser bloqueado
-pelo Windows; esta versão não conclui a integração do certificado do publicador.
+```bash
+./scripts/kmao.sh build \
+  --authenticode-signer /mnt/c/caminho/Provider.ps1 \
+  --output ./dist/release-com-authenticode
+```
 
-## Publicar pelo WSL com um comando
+O compilador Inno é procurado no PATH e nas pastas usuais do Windows. Para
+informá-lo explicitamente, acrescente:
 
-Depois de gerar os pacotes, fazer o commit e enviar ao GitHub:
+```bash
+--iscc '/mnt/c/Program Files (x86)/Inno Setup 6/ISCC.exe'
+```
+
+A saída padrão, sem `--output`, é `dist/release`. Uma pasta existente não é
+substituída; use uma nova saída para repetir um build. `--skip-installer` omite
+somente o instalador: os demais requisitos de assinatura continuam valendo.
+Um build de teste no PowerShell Linux exige `-AllowUnsigned -SkipInstaller` e gera
+um ZIP de fontes, sem host/DLL compilados; não equivale ao pacote Windows completo.
+
+| Arquivo da saída Windows | Uso |
+| --- | --- |
+| `kmao-setup-0.3.5.exe` | Instalação/reinstalação manual |
+| `kmao-0.3.5.zip` | Atualização do código versionado |
+| `kmao-manifest.json` | Versão, canal, notas e hashes assinados |
+| `kmao-manifest.sig` | Assinatura RSA do manifesto |
+| `kmao-release-notes.md` | Descrição da release atual |
+| `payload/`, `installer-source/` | Intermediários; não anexar à release |
+| `signed-uninstaller/` | Cache intermediário, quando Authenticode é usado |
+
+O build Windows compila `Kmao.Bot.exe` com os tipos de interface/automação
+incorporados e `lib/Kmao.Runtime.dll` para o logger/entradas PowerShell. As
+assinaturas Authenticode, quando configuradas, são aplicadas antes de gerar o ZIP,
+os hashes e o manifesto. Cada execução produz seu conjunto próprio de assinaturas.
+
+## Publicação no GitHub
+
+Depois de commit, build e push:
 
 ```bash
 git push origin main
+./scripts/kmao.sh publish --dry-run
 ./scripts/kmao.sh publish
 ```
 
-`publish` lê `VERSION`, usa a tag `vX.Y.Z`, o título `KMAO X.Y.Z — testes` e as
-notas `kmao-release-notes.md`. Publica diretamente como **prerelease** com os quatro
-anexos: instalador, ZIP, manifesto e assinatura. Não executa build, commit nem push.
+`publish` lê VERSION e cria `v0.3.5` para esse código, com título KMAO 0.3.5 —
+testes, marca prerelease e notas da saída do build. Anexa somente instalador,
+ZIP, manifesto e assinatura. Não faz build, commit nem push.
 
-Procura os pacotes em `dist/release-X.Y.Z`; se essa pasta não existir, usa
-`dist/release`, que é a saída padrão do build. Para outro diretório:
+Procura primeiro `dist/release-0.3.5`; se essa pasta não existir, usa `dist/release`.
+Para uma pasta diferente, ou para criar apenas um rascunho:
 
 ```bash
 ./scripts/kmao.sh publish --output ./dist/meu-pacote
-```
-
-Para conferir o comando sem acessar o GitHub ou criar apenas um rascunho:
-
-```bash
-./scripts/kmao.sh publish --dry-run
 ./scripts/kmao.sh publish --draft
 ```
 
-Requer Python 3, Git e GitHub CLI (`gh auth login`) no WSL. Não precisa executar
-PowerShell para publicar. O comando verifica arquivos obrigatórios, versão/canal do
-manifesto e hash do ZIP; exige uma árvore Git limpa e confirma o commit no GitHub
-antes de criar a release. A assinatura é validada pelo build, conforme
-[CODE_SIGNING.md](CODE_SIGNING.md). Não substitui releases nem anexos existentes.
+Requer Python 3, Git e GitHub CLI autenticado (`gh auth login`) no WSL. Não usa
+PowerShell para publicar. Verifica os arquivos, versão/canal e hash do ZIP, exige
+árvore limpa e confirma que HEAD existe no GitHub. `--dry-run` valida localmente e
+imprime o comando, sem acessar o GitHub. A assinatura é validada na etapa de build.
 
-## Publicar uma nova versão para testes
+Se alterar código ou documentação incluída no pacote depois do build, gere um
+novo conjunto em outra pasta antes de publicar. Se a versão já foi publicada,
+use um novo número em VERSION; não substitua seus anexos. Downloads públicos
+podem ser descobertos ou compartilhados mesmo sem divulgação.
 
-1. Atualize `VERSION` com três números, por exemplo `0.3.2`, e escreva as notas em
-   `CHANGELOG.md`. O canal inicial usa versões numéricas e a marca prerelease do
-   GitHub; sufixos como `-beta.1` não são suportados neste protocolo.
-2. Gere os quatro arquivos na mesma execução, usando a mesma chave de assinatura.
-3. Anexe instalador, ZIP, manifesto e assinatura à Release `v0.3.2` do repositório
-   `gut0leao/kmao-bot` e marque-a como **prerelease**.
-4. Revise o rascunho e publique quando decidir compartilhar o teste.
+## GitHub Actions
 
-O atualizador lista as 100 Releases mais recentes e considera somente prereleases
-publicadas com tag `vX.Y.Z`. Escolhe a maior versão numérica superior à instalada.
-Ele não usa `/releases/latest`, que não é adequado ao canal de testes. Uma versão
-com pacote ou assinatura inválidos não é instalada; a versão atual continua
-utilizável. O endereço do repositório e o canal estão fixos no protocolo inicial.
+[Validate](.github/workflows/check.yml) roda em pushes/PRs, com testes portáveis e
+Windows PowerShell 5.1; não usa as chaves de publicação. Testes que exigem um
+desktop são limitados/pulados conforme o ambiente e não substituem testes manuais.
 
-Downloads públicos podem ser descobertos e compartilhados mesmo sem divulgação.
-Não inclua configurações pessoais, gravações, logs ou chaves privadas nos anexos.
+[Build release (manual)](.github/workflows/release.yml) usa `workflow_dispatch`.
+Antes de usá-lo, configure autenticação do provedor de assinatura no runner, a
+variável `KMAO_AUTHENTICODE_SIGNER` apontando ao adaptador `.ps1`, e os secrets
+`KMAO_RELEASE_KEY_BASE64` e `KMAO_RELEASE_PUBLIC_KEY_BASE64` com a identidade RSA
+existente. Sem provedor, o workflow falha antes de ler os segredos de produção.
 
-## Fluxo de atualização
+Depois dessa configuração, o workflow testa, compila e envia os quatro arquivos
+e as notas como artifact. `create_draft=true` cria rascunho de prerelease na tag
+obtida de VERSION; a publicação continua manual. Chaves temporárias são excluídas
+no final. Detalhes do provedor estão em [CODE_SIGNING.md](CODE_SIGNING.md).
 
-Os atalhos instalados passam pelo lançador e consultam o GitHub a cada início. Se
-houver atualização, mostram versão instalada, versão oferecida e notas, pedindo
-confirmação. Recusar ou estar sem internet inicia a versão atual. A mesma oferta
-pode aparecer na próxima inicialização. Nenhum serviço ou tarefa agendada é criado.
+## Atualização e recuperação
 
-Após aceitar:
+Os atalhos consultam as 100 releases recentes e selecionam a maior prerelease
+publicada com tag `vX.Y.Z` superior à instalada. O canal é `testing`; sufixos de
+versão, drafts e releases estáveis não entram nessa seleção. Recusa ou falha de
+consulta inicia a versão instalada e registra o resultado em `launcher-*.log`.
+Não há serviço ou tarefa agendada de verificação.
 
-1. Um processo separado obtém o bloqueio de atualização e revalida a assinatura do
-   manifesto com a chave pública instalada. O download exige HTTPS e o endereço
-   esperado dos assets do repositório.
-2. O ZIP precisa corresponder ao hash assinado. A extração verifica hashes de cada
-   arquivo, lista completa, caminhos seguros, limites de tamanho, versão, esquema
-   de configuração e sintaxe PowerShell.
-3. A nova versão é preparada ao lado da atual. O atualizador sinaliza o encerramento
-   do bot e logger e aguarda até 20 segundos pela limpeza. Novas sessões são
-   bloqueadas nesse intervalo. Nenhum processo de usuário é morto à força.
-4. Um arquivo de estado troca a versão ativa atomicamente e guarda a anterior.
-   A versão nova tem até 30 segundos para sinalizar que inicializou configuração,
-   hooks e, no logger, o arquivo de gravação. Somente o componente solicitado é
-   reaberto; o outro permanece encerrado.
-5. Se a inicialização falhar, o atualizador tenta encerrar a tentativa, restaura a
-   versão anterior e a reabre. Se o processo do atualizador for interrompido, um
-   diário `pending.json` permite recuperar a versão anterior na próxima abertura.
+Após a confirmação, um processo separado autentica o manifesto com a chave
+pública instalada, verifica o ZIP e cada arquivo e prepara a nova versão ao lado
+da atual. A extração rejeita caminhos inseguros, arquivos/listas incompatíveis e
+erros de sintaxe PowerShell. O encerramento de bot/logger tem até 20 segundos
+para liberar a sessão; o logger tenta gravar os eventos finais. Nenhum processo
+alheio é encerrado à força.
 
-Se um componente não concluir o encerramento, a atualização é adiada e os detalhes
-ficam em `%USERPROFILE%\.kmao-bot\logs`. O mesmo diretório guarda os logs do
-lançador e do atualizador. Downloads temporários usam `updates/` e são removidos
-quando o fluxo termina normalmente; uma interrupção forçada pode deixar sobras.
+A ativação troca o estado atomicamente, guarda a versão anterior e espera até
+30 segundos pela prontidão do componente solicitado. O bot sinaliza interface e
+infraestrutura disponíveis; isso não exige estar verde nem concluir a mensagem
+inicial. Configuração editada inválida pode manter a interface pronta, mas pausada.
+O logger sinaliza após configuração, hooks e abertura do CSV. O outro componente
+permanece encerrado após a atualização.
 
-Para restaurar manualmente, use o atalho **Restaurar versao anterior** ou:
+Falha de inicialização restaura a versão anterior. Um diário `pending.json`
+permite recuperar a anterior na abertura após interrupção do atualizador. Para
+restaurar manualmente, use KMAO Bot - Restaurar versao anterior, ou no PowerShell:
 
 ```powershell
 & "$env:LOCALAPPDATA\Programs\KMAO Bot\Start-Kmao.ps1" -Rollback
 ```
 
-A restauração também pede confirmação. As versões antigas ficam em `versions/`
-até a desinstalação; não há limpeza automática nem exclusão dos dados pessoais.
+A restauração pede confirmação. Versões antigas não são limpas automaticamente;
+a desinstalação remove o código, mantendo dados do perfil. O esquema do protocolo
+continua 1; a importação aditiva de configuração da 0.3.5 preserva os legados para
+versões antigas. Pacotes de outro esquema são rejeitados.
 
-## Compatibilidade e limites
+## Diagnóstico
 
-- O esquema de configuração atual é 1. Atualizações de outro esquema são
-  rejeitadas, preservando os arquivos do usuário; ainda não há migração de esquema.
-- O despachante estável e a chave pública são instalados pelo `.exe`. O bot,
-  logger, lançador e atualizador são versionados e podem ser atualizados pelo ZIP.
-- O pacote portátil continua funcionando sem instalar e sem consultar atualizações.
-  Use o instalador para entrar no ciclo gerenciado.
-- A assinatura verifica a origem dos pacotes; não protege contra alteração local
-  por alguém que já tenha acesso de escrita à conta do usuário.
-- A confirmação de prontidão valida a inicialização, não garante ausência de erros
-  posteriores durante o uso. O atalho de restauração permanece disponível.
-- Testes automáticos de sessão usam eventos/mutexes reais no Windows sem gerar
-  entrada de mouse/teclado. Hooks e interação exigem `Test-Windows.ps1` em desktop
-  interativo. Instalação, desinstalação e atualização entre duas Releases também
-  devem ser validadas numa conta Windows de teste antes de convidar pessoas.
+- Sem oferta: conferir instalação pelo atalho, versão em `current.json`, marca
+  prerelease/tag/assets no GitHub e logs `launcher-*.log`.
+- Bot cinza: conferir atividade recente, Stop manual, configuração inválida,
+  documento substituído/fechado ou recusa de foco. Use Configurações e Logs.
+- Pacote incompleto: extrair/copiar o conjunto inteiro; nunca somente `dev.ps1`.
+- Nome antigo na bandeja: usar o build com host nativo e considerar o cache do
+  Windows; execução direta de scripts ainda pertence ao PowerShell.
+- Bloqueio de segurança: identificar o arquivo nos eventos do Windows; assinatura
+  RSA não substitui Authenticode. Não anunciar o modo de teste como validado para SAC.
+
+Logs de host, bot, logger, lançador e atualizador ficam em `logs/` no perfil.
+Downloads usam `updates/`; uma interrupção forçada pode deixar arquivos temporários.
+Veja [ROADMAP.md](ROADMAP.md) para a validação em outras contas e políticas.

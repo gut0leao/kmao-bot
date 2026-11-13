@@ -1,6 +1,12 @@
 # Alterações
 
+A versão do código é definida em [VERSION](VERSION). As entradas anteriores
+registram a evolução de cada release; para instruções atuais, use
+[README.md](README.md), [INSTALLATION.md](INSTALLATION.md) e [TRAY_BOT.md](TRAY_BOT.md).
+
 ## 0.3.5
+
+- Atualiza os guias de uso, instalação/publicação, assinatura, logger e roadmap para o estado atual do projeto.
 
 - Adiciona Configurações ao menu da bandeja; abre o arquivo do usuário no Notepad e pausa manualmente o bot durante a edição.
 - Reúne os parâmetros do bot e do logger em `%USERPROFILE%\.kmao-bot\config\application.conf`, com comentários em português acima de cada opção.
