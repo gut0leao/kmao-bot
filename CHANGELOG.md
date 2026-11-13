@@ -1,8 +1,17 @@
 # Alterações
 
+## 0.3.3
+
+- Exibe a versão instalada no cabeçalho do menu da bandeja.
+- Adiciona `Open logs folder` para abrir a pasta de logs no Explorador de Arquivos.
+
+### Teste de atualização da 0.3.2
+
+Feche o bot e abra novamente pelo atalho instalado. Aceite a atualização para 0.3.3 e confira `KMAO 0.3.3` no menu da bandeja e a opção `Open logs folder`. Configurações, frases e gravações são preservadas. O pacote de teste continua sem Authenticode; a assinatura RSA das atualizações permanece a mesma.
+
 ## 0.3.2
 
-Em preparação: distribuição com Authenticode depende da emissão/configuração do certificado e de teste com Smart App Control ativo. Nenhum instalador compatível foi publicado nesta etapa.
+A infraestrutura Authenticode foi preparada; a emissão/configuração do certificado e o teste com Smart App Control ativo permanecem pendentes. Os pacotes de teste foram gerados sem Authenticode por opção explícita.
 
 - Adiciona `./scripts/kmao.sh publish`, baseado em `VERSION`, com publicação de prerelease, modo rascunho e simulação local.
 - Exige provedor Authenticode no build de distribuição; permite build de desenvolvimento sem assinatura apenas por opção explícita.

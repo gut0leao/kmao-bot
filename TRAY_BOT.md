@@ -15,11 +15,15 @@ verde; em **Stop**, fica cinza. No Windows 11, o ícone pode estar dentro da ár
 
 Clique com o botão direito no ícone:
 
+Desde a versão 0.3.3, o cabeçalho desse menu mostra a versão em execução, por exemplo
+`KMAO 0.3.3`. Ele permite confirmar a versão após uma atualização.
+
 | Opção | Comportamento |
 | --- | --- |
 | Run | Aparece quando parado. Retoma o bot e ativa/maximiza seu Notepad; cria outro se a janela anterior foi fechada. |
 | Stop | Aparece quando habilitado. Cancela o ciclo atual e mantém o Notepad aberto para retomar depois. |
 | Logs | Abre um console PowerShell com as últimas 50 linhas do log da execução e `Get-Content -Wait`, equivalente a `tail -f`. |
+| Open logs folder | Abre `%USERPROFILE%\.kmao-bot\logs` no Explorador de Arquivos para consultar os logs do bot, lançador e atualizador. |
 | About | Abre o projeto `https://github.com/gut0leao/kmao-bot` no navegador. |
 | Exit | Encerra o bot, descarta seu documento sem salvar e remove o ícone da bandeja. |
 

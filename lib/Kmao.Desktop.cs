@@ -56,10 +56,13 @@ namespace Kmao {
                 runningIcon = CreateRobotIcon(Color.FromArgb(36, 167, 82));
                 stoppedIcon = CreateRobotIcon(Color.FromArgb(135, 140, 148));
                 var menu = new ContextMenuStrip();
+                menu.Items.Add(new ToolStripMenuItem("KMAO " + version) { Enabled = false });
+                menu.Items.Add(new ToolStripSeparator());
                 runItem = new ToolStripMenuItem("Run", null, delegate { enabled = true; RefreshState(); notices.Enqueue("Run selected."); });
                 stopItem = new ToolStripMenuItem("Stop", null, delegate { enabled = false; RefreshState(); notices.Enqueue("Stop selected; automatic cycle cancelled."); });
                 menu.Items.Add(runItem); menu.Items.Add(stopItem); menu.Items.Add(new ToolStripSeparator());
                 menu.Items.Add("Logs", null, delegate { try { OpenLogs(logFile, logViewer); } catch (Exception ex) { notices.Enqueue("Logs failed: " + ex.Message); } });
+                menu.Items.Add("Open logs folder", null, delegate { try { OpenLogFolder(logFile); } catch (Exception ex) { notices.Enqueue("Open logs folder failed: " + ex.Message); } });
                 menu.Items.Add("About", null, delegate { try { Process.Start(new ProcessStartInfo("https://github.com/gut0leao/kmao-bot") { UseShellExecute = true }); } catch (Exception ex) { notices.Enqueue("About failed: " + ex.Message); } });
                 menu.Items.Add(new ToolStripSeparator());
                 menu.Items.Add("Exit", null, delegate { RequestExit(); notices.Enqueue("Exit selected."); });
@@ -81,6 +84,11 @@ namespace Kmao {
             if (!File.Exists(file) || !File.Exists(viewer)) throw new FileNotFoundException("Log or log viewer is missing");
             string executable = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell\\v1.0\\powershell.exe");
             Process.Start(new ProcessStartInfo(executable, "-NoLogo -NoProfile -ExecutionPolicy Bypass -File \"" + viewer + "\" -LogPath \"" + file + "\"") { UseShellExecute = true });
+        }
+        public static void OpenLogFolder(string file) {
+            string directory = Path.GetDirectoryName(Path.GetFullPath(file));
+            if (!Directory.Exists(directory)) throw new DirectoryNotFoundException("Application logs directory is missing");
+            Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
         }
         public static Icon CreateRobotIcon(Color color) {
             using (var bitmap = new Bitmap(32, 32)) {
