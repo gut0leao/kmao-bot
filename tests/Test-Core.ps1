@@ -99,8 +99,9 @@ public class FakeInputMonitor {
     }
 }
 '@
-    $desktop = [pscustomobject]@{ Enabled = $true; ExitRequested = $false }
-    $notepad = [pscustomobject]@{ IsForeground = $true; Window = [IntPtr]1; EditorBounds = @(0, 0, 400, 200) }
+    $desktop = [pscustomobject]@{ Enabled = $true; ExitRequested = $false; ManualStopped = $false }
+    $desktop | Add-Member -MemberType ScriptMethod -Name SetEnabled -Value { param($value) $this.Enabled = $value }
+    $notepad = [pscustomobject]@{ IsForeground = $true; Window = [IntPtr]1; EditorBounds = @(0, 0, 400, 200); IsOpen = $true; OwnershipLost = $false; Activations = 0; StartupComplete = $false; StartupCharacters = 0 }
     $notepad | Add-Member -MemberType ScriptMethod -Name IsEditorPoint -Value { param($x, $y) return $true }
     $notepad | Add-Member -MemberType ScriptMethod -Name IsCursorOverEditor -Value { return $true }
     $script:monitor = [FakeInputMonitor]::new()
@@ -152,6 +153,36 @@ public class FakeInputMonitor {
     $desktop.Enabled = $true; $notepad.IsForeground = $false
     Assert-Throws { Invoke-BotCycle } 'Owned Notepad'
     $notepad.IsForeground = $true
+    # Physical input turns the icon gray; inactivity reactivates ONLY the owned
+    # Notepad. Manual Stop, closed documents and focus refusal must remain paused.
+    $notepad | Add-Member -MemberType ScriptMethod -Name MaximizeAndActivate -Value { $this.Activations++; $this.IsForeground = $true }
+    $script:monitor = [FakeInputMonitor]::new()
+    $script:observedGeneration = $monitor.Generation
+    Assert-True (Update-BotActivityState) 'Initial bot state did not run.'
+    $monitor.Generation++; $monitor.IdleSeconds = 0
+    Assert-True (!(Update-BotActivityState) -and !$desktop.Enabled) 'Physical input did not turn the tray gray.'
+    $monitor.IdleSeconds = 59
+    Assert-True (!(Update-BotActivityState) -and $notepad.Activations -eq 0) 'Bot resumed before idle threshold.'
+    $monitor.IdleSeconds = 60; $notepad.IsForeground = $false
+    Assert-True ((Update-BotActivityState) -and $desktop.Enabled -and $notepad.IsForeground -and $notepad.Activations -eq 1) 'Idle resume did not maximize/activate the owned document before turning green.'
+    $desktop.ManualStopped = $true; $desktop.Enabled = $false
+    Assert-True (!(Update-BotActivityState) -and !$desktop.Enabled -and $notepad.Activations -eq 1) 'Inactivity overrode manual Stop.'
+    $desktop.ManualStopped = $false; $notepad.IsOpen = $false
+    Assert-True (!(Update-BotActivityState) -and !$desktop.Enabled) 'Closed Notepad resumed automatically.'
+    $notepad.IsOpen = $true; $notepad.IsForeground = $false
+    $notepad | Add-Member -MemberType ScriptMethod -Name MaximizeAndActivate -Value { $this.Activations++ } -Force
+    Assert-True (!(Update-BotActivityState) -and !$desktop.Enabled) 'Foreground refusal enabled automation.'
+    $notepad | Add-Member -MemberType ScriptMethod -Name MaximizeAndActivate -Value { $this.IsForeground = $true; $script:monitor.Generation++ } -Force
+    Assert-True (!(Update-BotActivityState) -and !$desktop.Enabled) 'User input during focus restoration enabled automation.'
+    $script:observedGeneration = $monitor.Generation
+    $notepad | Add-Member -MemberType ScriptMethod -Name MaximizeAndActivate -Value { $this.IsForeground = $true; $desktop.ManualStopped = $true } -Force
+    Assert-True (!(Update-BotActivityState) -and !$desktop.Enabled) 'Manual Stop during activation was ignored.'
+    $desktop.ManualStopped = $false; $desktop.Enabled = $true; $notepad.IsForeground = $true
+    $notepad | Add-Member -MemberType ScriptMethod -Name TypeStartupCharacter -Value { $this.StartupCharacters++; $this.StartupComplete = $this.StartupCharacters -ge 21 }
+    $script:monitor = [FakeInputMonitor]::new(); $monitor.CancelAfterCheck = 3
+    Assert-Throws { Invoke-StartupTyping } 'User activity'
+    Assert-True ($notepad.StartupCharacters -eq 1 -and !$notepad.StartupComplete) 'Startup message was pasted or kept typing after physical input.'
+
     # Exercise the production logger entry point with a fake native producer.
     # Paths/configuration/writer/finally are real; only the OS boundary is replaced.
     $tokens = $null; $errors = $null

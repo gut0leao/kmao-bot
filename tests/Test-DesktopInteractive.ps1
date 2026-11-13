@@ -19,8 +19,13 @@ try {
     }
     $pattern = $null
     if (!$document.TryGetCurrentPattern([Windows.Automation.TextPattern]::Pattern, [ref]$pattern)) { throw 'Owned Notepad text cannot be verified.' }
+    $note.MaximizeAndActivate()
+    if ($note.StartupComplete) { throw 'Startup message must be animated by the bot, not pasted by the constructor.' }
+    $note.TypeStartupCharacter()
+    if ($pattern.DocumentRange.GetText(-1).TrimEnd() -ne 'K') { throw 'First startup step did not type exactly one character.' }
+    while (!$note.StartupComplete) { $note.TypeStartupCharacter(); Start-Sleep -Milliseconds 30 }
     $text = $pattern.DocumentRange.GetText(-1)
-    if ($text -notmatch '^KMAO BOT running\.\.\.') { throw 'Initial message was not written into the owned Notepad.' }
+    if ($text -notmatch '^KMAO BOT is running\.\.\.') { throw 'Initial message was not written into the owned Notepad.' }
     $unicode = 'a' + [char]0x00E7 + [char]0x00E3 + 'o ' + [char]::ConvertFromUtf32(0x1F916)
     $note.AppendText('Scoped Unicode test: + ^ % { } ' + $unicode)
     $text = $pattern.DocumentRange.GetText(-1)

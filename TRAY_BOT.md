@@ -1,16 +1,16 @@
-# Bot pela bandeja e Notepad próprio — 0.3.0
+# Bot pela bandeja e Notepad próprio — 0.3.3
 
 ## Uso
 
 Inicie **KMAO Bot** pelo menu Iniciar. O programa cria uma janela própria do
-Notepad do Windows, maximizada, e coloca a mensagem inicial:
+Notepad do Windows, maximizada, e digita a mensagem inicial, caractere por caractere:
 
 ```text
-KMAO BOT running...
+KMAO BOT is running...
 ```
 
 O bot começa em modo **Run**. O ícone na área de notificação é uma carinha de robô
-verde; em **Stop**, fica cinza. No Windows 11, o ícone pode estar dentro da área de
+verde; ao detectar mouse ou teclado do usuário, pausa e fica cinza. No Windows 11, o ícone pode estar dentro da área de
 ícones ocultos, acessível pela seta da bandeja.
 
 Clique com o botão direito no ícone:
@@ -21,7 +21,7 @@ Desde a versão 0.3.3, o cabeçalho desse menu mostra a versão em execução, p
 | Opção | Comportamento |
 | --- | --- |
 | Run | Aparece quando parado. Retoma o bot e ativa/maximiza seu Notepad; cria outro se a janela anterior foi fechada. |
-| Stop | Aparece quando habilitado. Cancela o ciclo atual e mantém o Notepad aberto para retomar depois. |
+| Stop | Pausa manualmente e mantém o Notepad aberto. Só retoma ao selecionar Run; a inatividade não desfaz o Stop manual. |
 | Logs | Abre um console PowerShell com as últimas 50 linhas do log da execução e `Get-Content -Wait`, equivalente a `tail -f`. |
 | Open logs folder | Abre `%USERPROFILE%\.kmao-bot\logs` no Explorador de Arquivos para consultar os logs do bot, lançador e atualizador. |
 | About | Abre o projeto `https://github.com/gut0leao/kmao-bot` no navegador. |
@@ -34,6 +34,15 @@ O modo Run habilita a automação, mas ainda respeita o limite de inatividade e 
 intervalos de `config/bot.conf`. Por padrão, aguarda 60 segundos de inatividade e
 mais um intervalo aleatório de 30 a 239 segundos antes de interagir. A cor verde
 indica Run habilitado; ela não significa que o bot esteja digitando naquele instante.
+
+Ao detectar atividade do usuário, o ícone fica cinza. Após
+`IDLE_TIME_THRESHOLD` segundos de inatividade (60 por padrão), o bot maximiza seu
+Notepad, tenta colocá-lo em primeiro plano e só fica verde após confirmar o foco.
+Se houver atividade durante essa transição ou o Windows recusar o foco, permanece
+cinza. Stop manual e documento fechado/substituído não retomam automaticamente.
+A mensagem inicial começa logo após a abertura, sem aguardar o intervalo entre
+ciclos. Ela também pausa com atividade do usuário e continua do ponto em que parou.
+As frases seguintes continuam sendo digitadas caractere por caractere.
 
 ## Escopo da interação
 
@@ -48,7 +57,8 @@ indica Run habilitado; ela não significa que o bot esteja digitando naquele ins
   clique é enviado ao próprio editor, sem pressionar botões globalmente em outros
   aplicativos. O movimento do cursor usa entrada identificada como sendo do bot.
 - Se você usar mouse/teclado, trocar para outra janela ou selecionar outra aba do
-  Notepad, o ciclo é interrompido. O bot não recupera o foco por conta própria.
+  Notepad, o ciclo é interrompido e o ícone fica cinza. O foco só é recuperado
+  após o tempo configurado de inatividade ou uma ação explícita Run.
 - Run é uma ação explícita que pode trazer o Notepad do bot de volta ao foco.
 - Se fechar o Notepad, o bot fica em Stop. Use Run para criar um novo documento.
 - Se substituir o documento ou remover a mensagem inicial, o bot pausa e preserva
@@ -64,7 +74,12 @@ de ser descartável: o bot pausa e o preserva. Use Run para criar outro document
 
 O Notepad moderno pode restaurar sessões anteriores e agrupar arquivos em abas.
 O KMAO usa os controles de automação do Notepad para criar uma nova janela isolada,
-sem reutilizar uma anotação restaurada. As outras janelas e abas são preservadas.
+sem reutilizar uma anotação restaurada. Se a primeira janela recém-aberta já for
+um documento vazio e sem título reconhecido, ela é usada diretamente, evitando
+abrir um segundo Notepad. Havendo um documento anterior/restaurado, o bot cria
+seu documento separado e preserva o anterior; por isso outras janelas pessoais
+podem continuar abertas. Localizações não reconhecidas usam a criação isolada.
+As outras janelas e abas são preservadas.
 A abertura do aplicativo pelo Windows pode restaurar essas outras sessões; o bot
 não altera essa preferência global do Notepad nem fecha as sessões restauradas.
 

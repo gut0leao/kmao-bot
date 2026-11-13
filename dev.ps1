@@ -29,7 +29,7 @@ function Send-BotClick {
 }
 
 function Assert-CycleActive {
-    if (!$desktop.Enabled -or $desktop.ExitRequested) { throw [OperationCanceledException]::new('Stopped from tray.') }
+    if (!$desktop.Enabled -or $desktop.ManualStopped -or $desktop.ExitRequested) { throw [OperationCanceledException]::new('Stopped from tray.') }
     if (!$notepad.IsForeground) { throw [OperationCanceledException]::new('Owned Notepad document is not active.') }
     if (Test-KmaoStopRequested $session) { throw [OperationCanceledException]::new('Update requested a clean shutdown.') }
     if (!$script:monitor.IsCurrent($script:cycleGeneration, $script:targetWindow)) {
@@ -46,6 +46,46 @@ function Wait-Cycle {
         if ($remaining -gt 0) { Start-Sleep -Milliseconds ([int][Math]::Min(25, $remaining)) }
     } while ($timer.ElapsedMilliseconds -lt $Milliseconds)
     Assert-CycleActive
+}
+
+# Returns true only after the owned document is active and the user remains idle.
+function Update-BotActivityState {
+    $generation = $monitor.Generation
+    if ($generation -ne $script:observedGeneration) {
+        $script:observedGeneration = $generation
+        if ($desktop.Enabled) { Write-KmaoLog INFO 'User activity detected; automatically paused.' }
+        $desktop.SetEnabled($false)
+        return $false
+    }
+    if ($desktop.ManualStopped -or !$notepad.IsOpen -or $notepad.OwnershipLost) {
+        $desktop.SetEnabled($false)
+        return $false
+    }
+    if ($desktop.Enabled -and !$notepad.IsForeground) {
+        $desktop.SetEnabled($false)
+        Write-KmaoLog INFO 'Owned Notepad lost focus; automatically paused.'
+    }
+    if (!$desktop.Enabled) {
+        if ($monitor.IdleSeconds -lt $settings.IDLE_TIME_THRESHOLD) { return $false }
+        $notepad.MaximizeAndActivate()
+        # Never turn green or write if activity races with restoring the window,
+        # or Windows refuses the foreground activation request.
+        if ($desktop.ManualStopped -or $desktop.ExitRequested -or (Test-KmaoStopRequested $session) -or $monitor.Generation -ne $generation -or !$notepad.IsForeground) { return $false }
+        $desktop.SetEnabled($true)
+        Write-KmaoLog INFO 'User idle; owned Notepad maximized and activated. Automation resumed.'
+    }
+    return $true
+}
+
+function Invoke-StartupTyping {
+    $script:cycleGeneration = $monitor.Generation
+    $script:targetWindow = Get-BotWindow
+    while (!$notepad.StartupComplete) {
+        Assert-CycleActive
+        $notepad.TypeStartupCharacter()
+        # Startup remains responsive and stays within the updater readiness budget.
+        Wait-Cycle (Get-Random -Minimum 45 -Maximum 110)
+    }
 }
 
 function Get-Delay {
@@ -201,6 +241,7 @@ try {
     $phrases = @(Get-Content -LiteralPath $phrasesPath -Encoding UTF8 | Where-Object { ![string]::IsNullOrWhiteSpace($_) })
     if ($phrases.Count -eq 0) { throw "Phrase file is empty: $phrasesPath" }
     $monitor = New-KmaoInput -RecordEvents $false -SamplingMilliseconds 200
+    $script:observedGeneration = $monitor.Generation
     $notepad = [Kmao.OwnedNotepad]::new()
     Write-KmaoLog INFO "Owned Notepad window: $($notepad.Window.ToInt64())"
     $version = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'VERSION')).Trim()
@@ -208,39 +249,38 @@ try {
     Set-KmaoReady $HealthToken
     Write-KmaoLog INFO "KMAO $version started in tray. Automation is restricted to its own Notepad."
     $consoleHidden = [Kmao.TrayController]::HideOwnedConsole()
-    $lastWaitReason = ''
+    $documentWarningShown = $false
     while (!(Test-KmaoStopRequested $session) -and !$desktop.ExitRequested) {
         $desktop.CheckHealth()
         foreach ($notice in $desktop.DrainNotices()) {
             Write-KmaoLog INFO $notice
             if ($notice -eq 'Run selected.') {
                 if (!$notepad.IsOpen -or $notepad.OwnershipLost) { $notepad.Dispose(); $notepad = [Kmao.OwnedNotepad]::new() }
+                $script:observedGeneration = $monitor.Generation
                 $notepad.MaximizeAndActivate()
+                $documentWarningShown = $false
             }
-        }
-        if (!$desktop.Enabled) {
-            if ($lastWaitReason -ne 'stopped') { Write-KmaoLog INFO 'Paused. Select Run in the tray menu to resume.'; $lastWaitReason = 'stopped' }
-            Start-Sleep -Milliseconds 100
-            continue
         }
         if (!$notepad.IsOpen -or $notepad.OwnershipLost) {
             $desktop.SetEnabled($false)
-            Write-KmaoLog WARN 'Owned Notepad was closed or its document was replaced. Use Run to create a new one.'
-            continue
+            if (!$documentWarningShown) {
+                Write-KmaoLog WARN 'Owned Notepad was closed or its document was replaced. Use Run to create a new one.'
+                $documentWarningShown = $true
+            }
         }
-        if (!$notepad.IsForeground) {
-            if ($lastWaitReason -ne 'focus') { Write-KmaoLog INFO 'Waiting for the owned Notepad document to be in the foreground.'; $lastWaitReason = 'focus' }
+        if (!(Update-BotActivityState)) {
             Start-Sleep -Milliseconds 100
             continue
         }
-        if ($monitor.IdleSeconds -lt $settings.IDLE_TIME_THRESHOLD) {
-            if ($lastWaitReason -ne 'idle') { Write-KmaoLog INFO "Waiting for $($settings.IDLE_TIME_THRESHOLD) seconds of user inactivity."; $lastWaitReason = 'idle' }
-            Start-Sleep -Milliseconds 100
-            continue
+        try {
+            if (!$notepad.StartupComplete) { Invoke-StartupTyping }
+            elseif ($monitor.IdleSeconds -ge $settings.IDLE_TIME_THRESHOLD) { Invoke-BotCycle }
+            else { Start-Sleep -Milliseconds 100 }
         }
-        $lastWaitReason = 'cycle'
-        try { Invoke-BotCycle }
-        catch [OperationCanceledException] { Write-KmaoLog INFO "Cycle cancelled: $($_.Exception.Message)" }
+        catch [OperationCanceledException] {
+            $desktop.SetEnabled($false)
+            Write-KmaoLog INFO "Cycle cancelled: $($_.Exception.Message)"
+        }
     }
     $desktop.CheckHealth()
     if (Test-KmaoStopRequested $session) { Write-KmaoLog INFO 'Shutdown requested by the updater.' }

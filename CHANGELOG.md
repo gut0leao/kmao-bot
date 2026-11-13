@@ -2,6 +2,11 @@
 
 ## 0.3.3
 
+- Reutiliza a janela recém-aberta do Notepad quando vazia e sem título, evitando uma segunda janela desnecessária sem alterar sessões anteriores.
+- Digita `KMAO BOT is running...` caractere por caractere; a mensagem pausa com atividade do usuário e continua ao retomar.
+- Fica cinza ao detectar atividade e retoma automaticamente após o limite de inatividade, maximizando/ativando seu Notepad antes de ficar verde.
+- Mantém Stop manual até Run; falha de foco e documento fechado/substituído permanecem pausados.
+
 - Exibe a versão instalada no cabeçalho do menu da bandeja.
 - Adiciona `Open logs folder` para abrir a pasta de logs no Explorador de Arquivos.
 

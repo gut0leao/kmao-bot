@@ -13,7 +13,9 @@ namespace Kmao {
         private AutomationElement tab;
         private bool disposed, initialized, ownershipLost;
         private string blankTabName, blankWindowTitle;
-        private const string Marker = "KMAO BOT running...";
+        private const string Marker = "KMAO BOT is running...";
+        private int startupPosition;
+        public bool StartupComplete { get { return startupPosition >= Marker.Length; } }
         public bool OwnershipLost { get { return ownershipLost; } }
         public IntPtr Window { get { return window; } }
         public bool IsOpen {
@@ -64,7 +66,9 @@ namespace Kmao {
             if (candidateEditor == IntPtr.Zero) throw new InvalidOperationException("Notepad is not ready; close its startup/settings dialogs and try again");
             var tabs = FindTabs(root);
             // Never claim a restored document or a pre-existing window as our own.
-            if (!before.Contains(initial) && tabs.Count == 0 && candidateEditor != IntPtr.Zero && NativeClass(candidateEditor) == "Edit" && Message(candidateEditor, 0x000E, IntPtr.Zero, IntPtr.Zero).ToInt64() == 0) {
+            if (!before.Contains(initial) && tabs.Count <= 1 && candidateEditor != IntPtr.Zero &&
+                Message(candidateEditor, 0x000E, IntPtr.Zero, IntPtr.Zero).ToInt64() == 0 &&
+                (tabs.Count == 0 && NativeClass(candidateEditor) == "Edit" || tabs.Count == 1 && IsUntitledTab(tabs[0]))) {
                 window = initial;
             }
             else {
@@ -89,7 +93,6 @@ namespace Kmao {
                 if (tab != null && blankTabName == null) throw new InvalidOperationException("Notepad does not expose its document title for safe ownership tracking");
                 blankWindowTitle = ReadWindowTitle(window);
                 ShowWindow(window, 3); // SW_MAXIMIZE, only for the window we just created.
-                AppendText(Marker + "\r\n");
                 initialized = true;
             }
             catch { Dispose(); throw; }
@@ -110,7 +113,7 @@ namespace Kmao {
                 ((SelectionItemPattern)pattern).Select();
             }
             ShowWindow(window, 3);
-            SetForegroundWindow(window); // Run is an explicit user action; never called by an idle cycle.
+            SetForegroundWindow(window); // Only startup, explicit Run, or an idle-resume transition.
         }
         public bool IsEditorPoint(int x, int y) {
             if (!IsForeground) return false;
@@ -133,7 +136,18 @@ namespace Kmao {
             POINT point;
             return GetCursorPos(out point) && IsEditorPoint(point.x, point.y);
         }
+        public void TypeStartupCharacter() {
+            if (StartupComplete) return;
+            if (!IsForeground) throw new OperationCanceledException("Owned Notepad is not in the foreground");
+            AppendOwnedText(Marker[startupPosition].ToString());
+            startupPosition++;
+            if (StartupComplete) AppendOwnedText("\r\n");
+        }
         public void AppendText(string text) {
+            if (!StartupComplete) throw new InvalidOperationException("Type the startup message before appending phrases");
+            AppendOwnedText(text);
+        }
+        private void AppendOwnedText(string text) {
             if (!IsOpen || !IsOwnedTabSelected()) throw new OperationCanceledException("Owned Notepad tab is not selected");
             editor = FindEditor(AutomationElement.FromHandle(window));
             if (editor == IntPtr.Zero) throw new OperationCanceledException("Owned editor is unavailable");
@@ -181,13 +195,18 @@ namespace Kmao {
             var title = element.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text));
             return title == null ? null : title.Current.Name;
         }
+        private static bool IsUntitledTab(AutomationElement element) {
+            string label = ReadTabLabel(element);
+            // Unknown locales take the isolation path instead of claiming a saved file.
+            return label != null && System.Text.RegularExpressions.Regex.IsMatch(label, @"^(Untitled|Sem título)( \d+)?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
         private static string NormalizeLabel(string value) { return (value ?? "").Trim().Trim('*').Trim(); }
         private bool HasOwnedIdentity() {
             // A manually saved/opened file is no longer a disposable scratch document.
             string rawLabel = tab == null ? ReadWindowTitle(window) : ReadTabLabel(tab);
             if (rawLabel == null) return false;
             string label = NormalizeLabel(rawLabel);
-            bool sameLabel = tab == null ? label == NormalizeLabel(blankWindowTitle) : label == NormalizeLabel(blankTabName) || label == Marker;
+            bool sameLabel = tab == null ? label == NormalizeLabel(blankWindowTitle) : label == NormalizeLabel(blankTabName) || label == Marker || Marker.StartsWith(label, StringComparison.Ordinal);
             return sameLabel && HasOwnedMarker();
         }
         private static string ReadWindowTitle(IntPtr handle) {
@@ -195,9 +214,12 @@ namespace Kmao {
         }
         private bool HasOwnedMarker() {
             // Read only the fixed-length ownership prefix, never log document contents.
-            var prefix = new StringBuilder(Marker.Length + 1);
+            string expected = Marker.Substring(0, startupPosition);
+            if (!StartupComplete && Message(editor, 0x000E, IntPtr.Zero, IntPtr.Zero).ToInt64() != expected.Length) return false;
+            if (expected.Length == 0) return true;
+            var prefix = new StringBuilder(expected.Length + 1);
             IntPtr result;
-            return ReadTextMessageTimeout(editor, 0x000D, new IntPtr(prefix.Capacity), prefix, 2, 1500, out result) != IntPtr.Zero && prefix.ToString() == Marker;
+            return ReadTextMessageTimeout(editor, 0x000D, new IntPtr(prefix.Capacity), prefix, 2, 1500, out result) != IntPtr.Zero && prefix.ToString() == expected;
         }
         private bool OwnTabStillPresent() {
             if (!IsWindow(window)) return false;

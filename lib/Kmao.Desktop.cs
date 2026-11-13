@@ -21,7 +21,8 @@ namespace Kmao {
         private ToolStripMenuItem runItem, stopItem;
         private Icon runningIcon, stoppedIcon;
         private Exception failure;
-        private volatile bool enabled = true, exitRequested, disposed;
+        private volatile bool enabled = true, manualStopped, exitRequested, disposed;
+        public bool ManualStopped { get { return manualStopped; } }
         public bool Enabled { get { return enabled; } }
         public bool ExitRequested { get { return exitRequested; } }
         public string[] DrainNotices() { var result = new System.Collections.Generic.List<string>(); string line; while (notices.TryDequeue(out line)) result.Add(line); return result.ToArray(); }
@@ -39,7 +40,7 @@ namespace Kmao {
             if (!disposed && !thread.IsAlive) throw new InvalidOperationException("Tray thread stopped unexpectedly");
         }
         public void SetEnabled(bool value) {
-            enabled = value;
+            enabled = value && !manualStopped && !exitRequested;
             if (dispatcher != null && !dispatcher.IsDisposed)
                 dispatcher.BeginInvoke((Action)delegate { RefreshState(); });
         }
@@ -58,8 +59,8 @@ namespace Kmao {
                 var menu = new ContextMenuStrip();
                 menu.Items.Add(new ToolStripMenuItem("KMAO " + version) { Enabled = false });
                 menu.Items.Add(new ToolStripSeparator());
-                runItem = new ToolStripMenuItem("Run", null, delegate { enabled = true; RefreshState(); notices.Enqueue("Run selected."); });
-                stopItem = new ToolStripMenuItem("Stop", null, delegate { enabled = false; RefreshState(); notices.Enqueue("Stop selected; automatic cycle cancelled."); });
+                runItem = new ToolStripMenuItem("Run", null, delegate { manualStopped = false; enabled = true; RefreshState(); notices.Enqueue("Run selected."); });
+                stopItem = new ToolStripMenuItem("Stop", null, delegate { manualStopped = true; enabled = false; RefreshState(); notices.Enqueue("Stop selected; automatic cycle cancelled."); });
                 menu.Items.Add(runItem); menu.Items.Add(stopItem); menu.Items.Add(new ToolStripSeparator());
                 menu.Items.Add("Logs", null, delegate { try { OpenLogs(logFile, logViewer); } catch (Exception ex) { notices.Enqueue("Logs failed: " + ex.Message); } });
                 menu.Items.Add("Open logs folder", null, delegate { try { OpenLogFolder(logFile); } catch (Exception ex) { notices.Enqueue("Open logs folder failed: " + ex.Message); } });
@@ -67,7 +68,7 @@ namespace Kmao {
                 menu.Items.Add(new ToolStripSeparator());
                 menu.Items.Add("Exit", null, delegate { RequestExit(); notices.Enqueue("Exit selected."); });
                 tray = new NotifyIcon(); tray.ContextMenuStrip = menu;
-                tray.DoubleClick += delegate { enabled = !enabled; RefreshState(); notices.Enqueue(enabled ? "Run selected." : "Stop selected."); };
+                tray.DoubleClick += delegate { manualStopped = enabled; enabled = !enabled; RefreshState(); notices.Enqueue(enabled ? "Run selected." : "Stop selected."); };
                 RefreshState(); tray.Visible = true; ready.Set();
                 Application.Run(context);
             } catch (Exception ex) { failure = ex; exitRequested = true; }

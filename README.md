@@ -122,7 +122,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\caminho\kmao-bot\dev
 
 ### Comportamento
 
-- Cria um Notepad próprio maximizado, com `KMAO BOT running...`, e inicia em Run.
+- Cria um Notepad próprio maximizado, digitando `KMAO BOT is running...` caractere por caractere, e inicia em Run.
 - Exibe um robô verde em Run e cinza em Stop; botão direito oferece Run/Stop, Logs,
   About e Exit. O ícone pode estar na área oculta da bandeja do Windows.
 - Aguarda pelo menos 60 segundos de inatividade e um intervalo aleatório de 30 a
@@ -131,7 +131,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\caminho\kmao-bot\dev
   à área do editor, com 70% de chance de acrescentar uma frase e uma nova linha.
 - Escreve texto Unicode diretamente no editor do Notepad próprio. Não digita nem
   envia Enter a outros aplicativos. O alvo não acompanha mudanças de janela.
-- Cancela o ciclo ao detectar atividade externa, Stop, Exit ou mudança de foco/aba.
+- Cancela o ciclo e fica cinza ao detectar atividade externa ou mudança de foco/aba.
+- Após o limite de inatividade, maximiza/ativa o próprio Notepad e só retoma (verde)
+  depois de confirmar o foco. Stop manual só é desfeito por Run.
 - Logs abre um console com acompanhamento ao vivo. About abre o projeto no GitHub.
 - Exit e a parada pelo atualizador descartam apenas o documento do bot sem salvar.
   Outras abas e janelas do Notepad são preservadas.
