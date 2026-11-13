@@ -1,6 +1,7 @@
 # Portable regression tests; no external framework or Windows input is needed.
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '../lib/Kmao.Common.ps1')
+. (Join-Path $PSScriptRoot '../lib/Kmao.Configuration.ps1')
 function Assert-True { param([bool]$Condition, [string]$Message) if (!$Condition) { throw $Message } }
 function Assert-Throws {
     param([scriptblock]$Action, [string]$Pattern)
@@ -56,17 +57,9 @@ try {
     foreach ($definition in $ast.FindAll({ param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] }, $false)) {
         . ([scriptblock]::Create($definition.Extent.Text))
     }
-    # Validate the shipped bot template against the production defaults, ranges and pair rules.
-    foreach ($assignment in $ast.FindAll({ param($node)
-        $node -is [Management.Automation.Language.AssignmentStatementAst] -and $node.Left.Extent.Text -in @('$defaults', '$ranges')
-    }, $true)) { . ([scriptblock]::Create($assignment.Extent.Text)) }
-    $settings = Read-KmaoConfig (Join-Path $repo 'config/bot.conf.example') $defaults $ranges
-    $pairRule = $ast.FindAll({ param($node)
-        $node -is [Management.Automation.Language.ForEachStatementAst] -and $node.Variable.VariablePath.UserPath -eq 'pair'
-    }, $true)[0].Extent.Text
-    . ([scriptblock]::Create($pairRule))
-    $settings.MIN_INTERVAL = $settings.MAX_INTERVAL
-    Assert-Throws { . ([scriptblock]::Create($pairRule)) } 'MIN_INTERVAL must be less'
+    # The complete application template is the source of validated defaults.
+    $settings = Read-KmaoAppConfig (Join-Path $repo 'config/application.conf.example')
+    Assert-True ($settings.IDLE_TIME_THRESHOLD -eq 60 -and $settings.STARTUP_MIN_CHAR_DELAY -eq 45) 'Application defaults are incorrect.'
 
     Add-Type @'
 public class FakeInputMonitor {
@@ -218,8 +211,9 @@ public class FakeRecorder {
         $producer.FailDispose = $scenario -eq 'cleanup'
         return $producer
     }
+    Initialize-KmaoAppConfig $KmaoRoot | Out-Null
     # Accelerate the duration boundary; parser/range validation is tested above.
-    function Read-KmaoConfig { return @{ MOUSE_SAMPLING_INTERVAL = 200; RECORDING_DURATION_MINUTES = 0.001 } }
+    function Read-KmaoAppConfig { return @{ MOUSE_SAMPLING_INTERVAL = 200; RECORDING_DURATION_MINUTES = 0.001 } }
     foreach ($scenario in @('success', 'startup', 'capture', 'cleanup')) {
         $recorder = $null; $writer = $null; $failed = $false; $eventCount = 0L; $pendingWrites = 0
         . $entry 2>$null

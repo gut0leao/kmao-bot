@@ -1,5 +1,15 @@
 # Alterações
 
+## 0.3.5
+
+- Adiciona Configurações ao menu da bandeja; abre o arquivo do usuário no Notepad e pausa manualmente o bot durante a edição.
+- Reúne os parâmetros do bot e do logger em `%USERPROFILE%\.kmao-bot\config\application.conf`, com comentários em português acima de cada opção.
+- Importa os valores dos antigos `bot.conf` e `kmao.conf` na primeira execução, preservando os arquivos originais para recuperação.
+- Relê e valida a configuração ao iniciar, selecionar Run e retomar por inatividade. Valores inválidos mantêm o bot cinza e são registrados no log.
+- Inclui os tempos de digitação da mensagem inicial entre os parâmetros configuráveis.
+
+Salve o arquivo e selecione Run para aplicar. O logger lê as opções ao iniciar uma nova gravação.
+
 ## 0.3.4
 
 - Executa o bot no processo próprio `Kmao.Bot.exe`, com descrição e produto `KMAO Bot`, em vez de hospedar a bandeja no `powershell.exe`.

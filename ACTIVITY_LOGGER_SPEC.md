@@ -1,3 +1,10 @@
+> Atualização 0.3.5: a configuração ativa do bot e do logger foi unificada em
+> `%USERPROFILE%\.kmao-bot\config\application.conf`, com comentários em português.
+> O template atual é `config/application.conf.example`. Referências a `kmao.conf`
+> abaixo pertencem à especificação original; os valores desse arquivo no perfil
+> são importados na primeira execução e o original é preservado. O logger aplica
+> os parâmetros ao iniciar uma nova gravação.
+
 # Activity Logger - Especificação Técnica
 
 > Documento histórico do desenho inicial. Os caminhos, o ciclo de captura e o tratamento de erros evoluíram; consulte o [README](README.md) para o funcionamento atual.

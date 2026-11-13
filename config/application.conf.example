@@ -1,0 +1,97 @@
+# Configurações do KMAO Bot e do Activity Logger. Use NOME=inteiro, sem aspas.
+# Os limites MAX são exclusivos: o valor sorteado sempre fica abaixo deles.
+# Salve o arquivo e selecione Run; cada entrada em Running relê e valida as opções.
+# Opções do logger são aplicadas ao iniciar uma nova gravação.
+
+# Tempo mínimo entre ciclos de interação, em segundos (1 a 86400).
+MIN_INTERVAL=30
+
+# Limite superior exclusivo entre ciclos, em segundos; deve ser maior que MIN_INTERVAL.
+MAX_INTERVAL=240
+
+# Largura máxima da área central de cliques no editor do bot, em pixels (1 a 32768).
+RECT_WIDTH=400
+
+# Altura máxima da área central de cliques no editor do bot, em pixels (1 a 32768).
+RECT_HEIGHT=200
+
+# Quantidade mínima de cliques por ciclo (1 a 100).
+MIN_CLICKS=1
+
+# Limite superior exclusivo de cliques; deve ser maior que MIN_CLICKS e no máximo 100.
+MAX_CLICKS=4
+
+# Chance de digitar uma frase após os cliques, em porcentagem (0 a 100).
+TYPING_CHANCE=70
+
+# Tempo sem atividade do usuário antes da retomada automática, em segundos (1 a 86400).
+IDLE_TIME_THRESHOLD=60
+
+# Pausa mínima entre caracteres das frases, em milissegundos (0 a 60000).
+MIN_CHAR_DELAY=40
+
+# Limite superior exclusivo entre caracteres, em ms; maior que MIN_CHAR_DELAY, até 60000.
+MAX_CHAR_DELAY=200
+
+# Chance de acrescentar uma pausa de hesitação entre caracteres, em porcentagem (0 a 100).
+HESITATION_CHANCE=8
+
+# Pausa mínima adicional de hesitação, em milissegundos (0 a 60000).
+MIN_HESITATION=300
+
+# Limite superior exclusivo da hesitação, em ms; maior que MIN_HESITATION, até 60000.
+MAX_HESITATION=800
+
+# Pausa mínima ao digitar um espaço, em milissegundos (0 a 60000).
+SPACE_MIN_DELAY=30
+
+# Limite superior exclusivo da pausa em espaços, em ms; maior que SPACE_MIN_DELAY, até 60000.
+SPACE_MAX_DELAY=120
+
+# Pausa mínima adicional após pontuação, em milissegundos (0 a 60000).
+PUNCT_MIN_DELAY=50
+
+# Limite superior exclusivo após pontuação, em ms; maior que PUNCT_MIN_DELAY, até 60000.
+PUNCT_MAX_DELAY=150
+
+# Pausa mínima entre mover o cursor e clicar, em milissegundos (0 a 60000).
+CURSOR_MIN_DELAY=80
+
+# Limite superior exclusivo antes do clique, em ms; maior que CURSOR_MIN_DELAY, até 60000.
+CURSOR_MAX_DELAY=200
+
+# Pausa mínima entre cliques do mesmo ciclo, em milissegundos (0 a 60000).
+MULTI_CLICK_MIN_DELAY=200
+
+# Limite superior exclusivo entre cliques, em ms; maior que MULTI_CLICK_MIN_DELAY, até 60000.
+MULTI_CLICK_MAX_DELAY=500
+
+# Espera mínima antes de começar uma frase, em milissegundos (0 a 60000).
+PRE_TYPING_MIN_DELAY=500
+
+# Limite superior exclusivo antes da frase, em ms; maior que PRE_TYPING_MIN_DELAY, até 60000.
+PRE_TYPING_MAX_DELAY=1500
+
+# Pausa mínima antes da quebra de linha, em milissegundos (0 a 60000).
+PRE_ENTER_MIN_DELAY=200
+
+# Limite superior exclusivo antes da quebra de linha, em ms; maior que PRE_ENTER_MIN_DELAY, até 60000.
+PRE_ENTER_MAX_DELAY=600
+
+# Pausa mínima ao terminar um ciclo, em milissegundos (0 a 60000).
+FINAL_MIN_DELAY=200
+
+# Limite superior exclusivo ao terminar o ciclo, em ms; maior que FINAL_MIN_DELAY, até 60000.
+FINAL_MAX_DELAY=800
+
+# Pausa mínima entre letras da mensagem inicial, em milissegundos (0 a 60000).
+STARTUP_MIN_CHAR_DELAY=45
+
+# Limite superior exclusivo da mensagem inicial, em ms; maior que STARTUP_MIN_CHAR_DELAY, até 60000.
+STARTUP_MAX_CHAR_DELAY=110
+
+# Intervalo mínimo entre amostras de movimento do mouse no logger, em ms (1 a 60000).
+MOUSE_SAMPLING_INTERVAL=200
+
+# Duração máxima de gravação do logger, em minutos (0 a 525600); 0 grava até encerrar.
+RECORDING_DURATION_MINUTES=480

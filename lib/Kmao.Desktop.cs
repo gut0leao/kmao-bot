@@ -14,21 +14,22 @@ namespace Kmao {
         private readonly Thread thread;
         private readonly ManualResetEvent ready = new ManualResetEvent(false);
         private readonly ConcurrentQueue<string> notices = new ConcurrentQueue<string>();
-        private readonly string logFile, logViewer, version;
+        private readonly string logFile, logViewer, version, configurationFile;
         private ApplicationContext context;
         private Control dispatcher;
         private NotifyIcon tray;
         private ToolStripMenuItem runItem, stopItem;
         private Icon runningIcon, stoppedIcon;
         private Exception failure;
-        private volatile bool enabled = true, manualStopped, exitRequested, disposed;
+        private volatile bool enabled, manualStopped, exitRequested, disposed;
         public bool ManualStopped { get { return manualStopped; } }
         public bool Enabled { get { return enabled; } }
         public bool ExitRequested { get { return exitRequested; } }
         public string[] DrainNotices() { var result = new System.Collections.Generic.List<string>(); string line; while (notices.TryDequeue(out line)) result.Add(line); return result.ToArray(); }
 
-        public TrayController(string logFile, string logViewer, string version) {
-            this.logFile = logFile; this.logViewer = logViewer; this.version = version;
+        public TrayController(string logFile, string logViewer, string version) : this(logFile, logViewer, version, null) { }
+        public TrayController(string logFile, string logViewer, string version, string configurationFile) {
+            this.logFile = logFile; this.logViewer = logViewer; this.version = version; this.configurationFile = configurationFile;
             thread = new Thread(Run); thread.IsBackground = true;
             thread.SetApartmentState(ApartmentState.STA); thread.Name = "KMAO tray";
             thread.Start();
@@ -44,6 +45,8 @@ namespace Kmao {
             if (dispatcher != null && !dispatcher.IsDisposed)
                 dispatcher.BeginInvoke((Action)delegate { RefreshState(); });
         }
+        public void RequestRun() { manualStopped = false; notices.Enqueue("Run selected."); }
+        public void RequestStop() { manualStopped = true; SetEnabled(false); notices.Enqueue("Stop selected; automatic cycle cancelled."); }
         public void RequestExit() { exitRequested = true; enabled = false; }
         private void RefreshState() {
             runItem.Visible = !enabled; stopItem.Visible = enabled;
@@ -59,16 +62,21 @@ namespace Kmao {
                 var menu = new ContextMenuStrip();
                 menu.Items.Add(new ToolStripMenuItem("KMAO " + version) { Enabled = false });
                 menu.Items.Add(new ToolStripSeparator());
-                runItem = new ToolStripMenuItem("Run", null, delegate { manualStopped = false; enabled = true; RefreshState(); notices.Enqueue("Run selected."); });
-                stopItem = new ToolStripMenuItem("Stop", null, delegate { manualStopped = true; enabled = false; RefreshState(); notices.Enqueue("Stop selected; automatic cycle cancelled."); });
+                runItem = new ToolStripMenuItem("Run", null, delegate { RequestRun(); });
+                stopItem = new ToolStripMenuItem("Stop", null, delegate { RequestStop(); });
                 menu.Items.Add(runItem); menu.Items.Add(stopItem); menu.Items.Add(new ToolStripSeparator());
+                menu.Items.Add("Configurações", null, delegate {
+                    RequestStop();
+                    try { OpenConfiguration(configurationFile); notices.Enqueue("Configuration opened. Save changes and select Run to apply."); }
+                    catch (Exception ex) { notices.Enqueue("Configuration failed: " + ex.Message); }
+                });
                 menu.Items.Add("Logs", null, delegate { try { OpenLogs(logFile, logViewer); } catch (Exception ex) { notices.Enqueue("Logs failed: " + ex.Message); } });
                 menu.Items.Add("Open logs folder", null, delegate { try { OpenLogFolder(logFile); } catch (Exception ex) { notices.Enqueue("Open logs folder failed: " + ex.Message); } });
                 menu.Items.Add("About", null, delegate { try { Process.Start(new ProcessStartInfo("https://github.com/gut0leao/kmao-bot") { UseShellExecute = true }); } catch (Exception ex) { notices.Enqueue("About failed: " + ex.Message); } });
                 menu.Items.Add(new ToolStripSeparator());
                 menu.Items.Add("Exit", null, delegate { RequestExit(); notices.Enqueue("Exit selected."); });
                 tray = new NotifyIcon(); tray.ContextMenuStrip = menu;
-                tray.DoubleClick += delegate { manualStopped = enabled; enabled = !enabled; RefreshState(); notices.Enqueue(enabled ? "Run selected." : "Stop selected."); };
+                tray.DoubleClick += delegate { if (enabled) RequestStop(); else RequestRun(); };
                 RefreshState(); tray.Visible = true; ready.Set();
                 Application.Run(context);
             } catch (Exception ex) { failure = ex; exitRequested = true; }
@@ -80,6 +88,11 @@ namespace Kmao {
                 if (context != null) context.Dispose();
                 ready.Set();
             }
+        }
+        public static void OpenConfiguration(string file) {
+            if (String.IsNullOrWhiteSpace(file) || !File.Exists(file)) throw new FileNotFoundException("Application configuration is missing", file);
+            string executable = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "notepad.exe");
+            Process.Start(new ProcessStartInfo(executable, "\"" + Path.GetFullPath(file) + "\"") { UseShellExecute = true });
         }
         public static void OpenLogs(string file, string viewer) {
             if (!File.Exists(file) || !File.Exists(viewer)) throw new FileNotFoundException("Log or log viewer is missing");

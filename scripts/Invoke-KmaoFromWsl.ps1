@@ -28,6 +28,7 @@ try {
         }
         test {
             & (Join-Path $RepositoryPath 'tests/Test-Core.ps1')
+            & (Join-Path $RepositoryPath 'tests/Test-Configuration.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-Updates.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-Authenticode.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-BotHost.ps1')

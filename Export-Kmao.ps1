@@ -13,6 +13,7 @@ $files = @(
     'tests/Test-Desktop.ps1', 'tests/Test-DesktopInteractive.ps1', 'tests/Test-BotDesktopLifecycle.ps1',
     'dev.bat', 'dev.ps1', 'init_recording.bat', 'activity_logger.ps1',
     'lib/Kmao.Common.ps1', 'lib/Kmao.Windows.cs',
+    'lib/Kmao.Configuration.ps1', 'config/application.conf.example', 'tests/Test-Configuration.ps1',
     'config/bot.conf.example', 'config/kmao.conf.example', 'phrases.txt',
     'INSTALLATION.md', 'TRAY_BOT.md',
     'scripts/Publish-KmaoRelease.py', 'tests/test_publish_release.py',

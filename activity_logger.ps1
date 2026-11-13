@@ -2,7 +2,7 @@ param([string]$HealthToken)
 # KMAO activity recorder. Hook callbacks enqueue events; only this thread writes files.
 $ErrorActionPreference = 'Stop'
 # Validate the package before loading shared code; diagnostics are unavailable at this stage.
-$missingFiles = @(@('lib/Kmao.Common.ps1', 'lib/Kmao.Windows.cs', 'config/kmao.conf.example') | Where-Object {
+$missingFiles = @(@('lib/Kmao.Common.ps1', 'lib/Kmao.Configuration.ps1', 'lib/Kmao.Windows.cs', 'config/application.conf.example') | Where-Object {
     !(Test-Path -LiteralPath (Join-Path $PSScriptRoot $_) -PathType Leaf)
 })
 if ($missingFiles.Count -gt 0) {
@@ -10,6 +10,7 @@ if ($missingFiles.Count -gt 0) {
     exit 1
 }
 . (Join-Path $PSScriptRoot 'lib/Kmao.Common.ps1')
+. (Join-Path $PSScriptRoot 'lib/Kmao.Configuration.ps1')
 
 function Write-PendingEvents {
     $batch = @($recorder.Drain())
@@ -38,15 +39,8 @@ try {
     Initialize-Kmao logger
     Import-KmaoWindows
     $session = Enter-KmaoSession -Component logger -HealthToken $HealthToken
-    $configPath = Join-Path $KmaoRoot 'config/kmao.conf'
-    Initialize-KmaoFile $configPath (Join-Path $PSScriptRoot 'config/kmao.conf.example')
-    $config = Read-KmaoConfig $configPath @{
-        MOUSE_SAMPLING_INTERVAL = 200
-        RECORDING_DURATION_MINUTES = 480
-    } @{
-        MOUSE_SAMPLING_INTERVAL = @(1, 60000)
-        RECORDING_DURATION_MINUTES = @(0, 525600)
-    }
+    $configPath = Initialize-KmaoAppConfig $KmaoRoot
+    $config = Read-KmaoAppConfig $configPath
     $name = '{0}-{1}-{2}-recording.csv' -f (Get-Date -Format 'yyyy-MM-dd-HH-mm-ss-fff'), $PID, [Guid]::NewGuid().ToString('N')
     $logFile = Join-Path $KmaoRoot "data/$name"
     # CreateNew avoids overwriting any existing recording; FileShare.Read permits inspection.

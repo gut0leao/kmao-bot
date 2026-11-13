@@ -5,7 +5,7 @@ param(
 # KMAO automation. All writable files live in the current user's profile.
 $ErrorActionPreference = 'Stop'
 # Validate the package before loading shared code; diagnostics are unavailable at this stage.
-$missingFiles = @(@('lib/Kmao.Common.ps1', 'lib/Kmao.Windows.cs', 'lib/Kmao.Desktop.cs', 'lib/Kmao.Notepad.cs', 'Show-KmaoLogs.ps1', 'VERSION', 'config/bot.conf.example', 'phrases.txt') | Where-Object {
+$missingFiles = @(@('lib/Kmao.Common.ps1', 'lib/Kmao.Configuration.ps1', 'lib/Kmao.Windows.cs', 'lib/Kmao.Desktop.cs', 'lib/Kmao.Notepad.cs', 'Show-KmaoLogs.ps1', 'VERSION', 'config/application.conf.example', 'phrases.txt') | Where-Object {
     !(Test-Path -LiteralPath (Join-Path $PSScriptRoot $_) -PathType Leaf)
 })
 if ($missingFiles.Count -gt 0) {
@@ -13,6 +13,7 @@ if ($missingFiles.Count -gt 0) {
     exit 1
 }
 . (Join-Path $PSScriptRoot 'lib/Kmao.Common.ps1')
+. (Join-Path $PSScriptRoot 'lib/Kmao.Configuration.ps1')
 
 function Get-BotWindow { return $notepad.Window }
 
@@ -48,7 +49,42 @@ function Wait-Cycle {
     Assert-CycleActive
 }
 
-# Returns true only after the owned document is active and the user remains idle.
+function Update-BotConfiguration {
+    try {
+        $newSettings = Read-KmaoAppConfig $configPath
+        $script:settings = $newSettings
+        $script:configurationError = $null
+        return $true
+    }
+    catch {
+        $message = $_.Exception.Message
+        if ($script:configurationError -ne $message) { Write-KmaoLog ERROR "Configuration rejected; bot paused: $message" }
+        $script:configurationError = $message
+        $desktop.SetEnabled($false)
+        return $false
+    }
+}
+
+function Start-BotRunning {
+    param([switch]$Explicit)
+    $generation = $monitor.Generation
+    if ($desktop.ManualStopped -or $desktop.ExitRequested -or (Test-KmaoStopRequested $session)) { return $false }
+    # Load into a temporary table and validate ALL fields before replacing settings.
+    if (!(Update-BotConfiguration)) { return $false }
+    if (!$Explicit -and $monitor.IdleSeconds -lt $settings.IDLE_TIME_THRESHOLD) { return $false }
+    if (!$notepad.IsOpen -or $notepad.OwnershipLost) {
+        if (!$Explicit) { return $false }
+        $notepad.Dispose()
+        $script:notepad = [Kmao.OwnedNotepad]::new()
+    }
+    $notepad.MaximizeAndActivate()
+    if ($desktop.ManualStopped -or $desktop.ExitRequested -or (Test-KmaoStopRequested $session) -or $monitor.Generation -ne $generation -or !$notepad.IsForeground) { return $false }
+    $script:observedGeneration = $generation
+    $desktop.SetEnabled($true)
+    Write-KmaoLog INFO 'Configuration reloaded. Owned Notepad activated; Running.'
+    return $desktop.Enabled
+}
+
 function Update-BotActivityState {
     $generation = $monitor.Generation
     if ($generation -ne $script:observedGeneration) {
@@ -65,15 +101,7 @@ function Update-BotActivityState {
         $desktop.SetEnabled($false)
         Write-KmaoLog INFO 'Owned Notepad lost focus; automatically paused.'
     }
-    if (!$desktop.Enabled) {
-        if ($monitor.IdleSeconds -lt $settings.IDLE_TIME_THRESHOLD) { return $false }
-        $notepad.MaximizeAndActivate()
-        # Never turn green or write if activity races with restoring the window,
-        # or Windows refuses the foreground activation request.
-        if ($desktop.ManualStopped -or $desktop.ExitRequested -or (Test-KmaoStopRequested $session) -or $monitor.Generation -ne $generation -or !$notepad.IsForeground) { return $false }
-        $desktop.SetEnabled($true)
-        Write-KmaoLog INFO 'User idle; owned Notepad maximized and activated. Automation resumed.'
-    }
+    if (!$desktop.Enabled) { return Start-BotRunning }
     return $true
 }
 
@@ -84,7 +112,7 @@ function Invoke-StartupTyping {
         Assert-CycleActive
         $notepad.TypeStartupCharacter()
         # Startup remains responsive and stays within the updater readiness budget.
-        Wait-Cycle (Get-Random -Minimum 45 -Maximum 110)
+        Wait-Cycle (Get-Delay STARTUP_MIN_CHAR_DELAY STARTUP_MAX_CHAR_DELAY)
     }
 }
 
@@ -165,77 +193,9 @@ try {
     Initialize-Kmao bot -ProfileDirectory $ProfileDirectory
     Import-KmaoDesktop
     $session = Enter-KmaoSession -Component bot -HealthToken $HealthToken
-    $configPath = Join-Path $KmaoRoot 'config/bot.conf'
-    Initialize-KmaoFile $configPath (Join-Path $PSScriptRoot 'config/bot.conf.example')
-    $defaults = @{
-        MIN_INTERVAL = 30
-        MAX_INTERVAL = 240
-        RECT_WIDTH = 400
-        RECT_HEIGHT = 200
-        MIN_CLICKS = 1
-        MAX_CLICKS = 4
-        TYPING_CHANCE = 70
-        IDLE_TIME_THRESHOLD = 60
-        MIN_CHAR_DELAY = 40
-        MAX_CHAR_DELAY = 200
-        HESITATION_CHANCE = 8
-        MIN_HESITATION = 300
-        MAX_HESITATION = 800
-        SPACE_MIN_DELAY = 30
-        SPACE_MAX_DELAY = 120
-        PUNCT_MIN_DELAY = 50
-        PUNCT_MAX_DELAY = 150
-        CURSOR_MIN_DELAY = 80
-        CURSOR_MAX_DELAY = 200
-        MULTI_CLICK_MIN_DELAY = 200
-        MULTI_CLICK_MAX_DELAY = 500
-        PRE_TYPING_MIN_DELAY = 500
-        PRE_TYPING_MAX_DELAY = 1500
-        PRE_ENTER_MIN_DELAY = 200
-        PRE_ENTER_MAX_DELAY = 600
-        FINAL_MIN_DELAY = 200
-        FINAL_MAX_DELAY = 800
-    }
-    $ranges = @{
-        MIN_INTERVAL = @(1, 86400)
-        MAX_INTERVAL = @(1, 86400)
-        RECT_WIDTH = @(1, 32768)
-        RECT_HEIGHT = @(1, 32768)
-        MIN_CLICKS = @(1, 100)
-        MAX_CLICKS = @(1, 100)
-        TYPING_CHANCE = @(0, 100)
-        IDLE_TIME_THRESHOLD = @(1, 86400)
-        MIN_CHAR_DELAY = @(0, 60000)
-        MAX_CHAR_DELAY = @(0, 60000)
-        HESITATION_CHANCE = @(0, 100)
-        MIN_HESITATION = @(0, 60000)
-        MAX_HESITATION = @(0, 60000)
-        SPACE_MIN_DELAY = @(0, 60000)
-        SPACE_MAX_DELAY = @(0, 60000)
-        PUNCT_MIN_DELAY = @(0, 60000)
-        PUNCT_MAX_DELAY = @(0, 60000)
-        CURSOR_MIN_DELAY = @(0, 60000)
-        CURSOR_MAX_DELAY = @(0, 60000)
-        MULTI_CLICK_MIN_DELAY = @(0, 60000)
-        MULTI_CLICK_MAX_DELAY = @(0, 60000)
-        PRE_TYPING_MIN_DELAY = @(0, 60000)
-        PRE_TYPING_MAX_DELAY = @(0, 60000)
-        PRE_ENTER_MIN_DELAY = @(0, 60000)
-        PRE_ENTER_MAX_DELAY = @(0, 60000)
-        FINAL_MIN_DELAY = @(0, 60000)
-        FINAL_MAX_DELAY = @(0, 60000)
-    }
-    $settings = Read-KmaoConfig $configPath $defaults $ranges
-    foreach ($pair in @(
-        @('MIN_INTERVAL', 'MAX_INTERVAL'), @('MIN_CLICKS', 'MAX_CLICKS'),
-        @('MIN_CHAR_DELAY', 'MAX_CHAR_DELAY'), @('MIN_HESITATION', 'MAX_HESITATION'),
-        @('SPACE_MIN_DELAY', 'SPACE_MAX_DELAY'), @('PUNCT_MIN_DELAY', 'PUNCT_MAX_DELAY'),
-        @('CURSOR_MIN_DELAY', 'CURSOR_MAX_DELAY'),
-        @('MULTI_CLICK_MIN_DELAY', 'MULTI_CLICK_MAX_DELAY'), @('PRE_TYPING_MIN_DELAY', 'PRE_TYPING_MAX_DELAY'),
-        @('PRE_ENTER_MIN_DELAY', 'PRE_ENTER_MAX_DELAY'), @('FINAL_MIN_DELAY', 'FINAL_MAX_DELAY')
-    )) {
-        if ($settings[$pair[0]] -ge $settings[$pair[1]]) { throw "$($pair[0]) must be less than $($pair[1])." }
-    }
+    $configPath = Initialize-KmaoAppConfig $KmaoRoot
+    $script:settings = Get-KmaoConfigDefaults
+    $script:configurationError = $null
     $phrasesPath = Join-Path $KmaoRoot 'phrases.txt'
     Initialize-KmaoFile $phrasesPath (Join-Path $PSScriptRoot 'phrases.txt')
     $phrases = @(Get-Content -LiteralPath $phrasesPath -Encoding UTF8 | Where-Object { ![string]::IsNullOrWhiteSpace($_) })
@@ -245,19 +205,18 @@ try {
     $notepad = [Kmao.OwnedNotepad]::new()
     Write-KmaoLog INFO "Owned Notepad window: $($notepad.Window.ToInt64())"
     $version = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'VERSION')).Trim()
-    $desktop = [Kmao.TrayController]::new($KmaoLogFile, (Join-Path $PSScriptRoot 'Show-KmaoLogs.ps1'), $version)
+    $desktop = [Kmao.TrayController]::new($KmaoLogFile, (Join-Path $PSScriptRoot 'Show-KmaoLogs.ps1'), $version, $configPath)
     Set-KmaoReady $HealthToken
     Write-KmaoLog INFO "KMAO $version started in tray. Automation is restricted to its own Notepad."
     $consoleHidden = [Kmao.TrayController]::HideOwnedConsole()
     $documentWarningShown = $false
+    if ($monitor.Generation -eq $script:observedGeneration) { Start-BotRunning -Explicit | Out-Null }
     while (!(Test-KmaoStopRequested $session) -and !$desktop.ExitRequested) {
         $desktop.CheckHealth()
         foreach ($notice in $desktop.DrainNotices()) {
             Write-KmaoLog INFO $notice
             if ($notice -eq 'Run selected.') {
-                if (!$notepad.IsOpen -or $notepad.OwnershipLost) { $notepad.Dispose(); $notepad = [Kmao.OwnedNotepad]::new() }
-                $script:observedGeneration = $monitor.Generation
-                $notepad.MaximizeAndActivate()
+                Start-BotRunning -Explicit | Out-Null
                 $documentWarningShown = $false
             }
         }

@@ -20,11 +20,18 @@ try {
     Set-Content -LiteralPath $log -Value 'test log' -Encoding UTF8
     if (![Environment]::UserInteractive) { Write-Host 'PASS: desktop compilation and icons (tray interaction skipped in noninteractive session).'; return }
     $tray = [Kmao.TrayController]::new($log, (Join-Path $repo 'Show-KmaoLogs.ps1'), 'test')
-    if (!$tray.Enabled) { throw 'Tray must begin in Run mode.' }
+    if ($tray.Enabled) { throw 'Tray must wait for configuration validation before Running.' }
+    $tray.RequestRun()
+    if ($tray.Enabled -or $tray.ManualStopped) { throw 'Run must request backend validation without turning green.' }
     $tray.SetEnabled($false)
     if ($tray.Enabled) { throw 'Stop did not pause the tray controller.' }
     $tray.SetEnabled($true)
     if (!$tray.Enabled) { throw 'Run did not resume the tray controller.' }
+    $tray.RequestStop()
+    if ($tray.Enabled -or !$tray.ManualStopped) { throw 'Manual Stop did not pause.' }
+    $tray.RequestRun()
+    if ($tray.Enabled -or $tray.ManualStopped) { throw 'Manual Run bypassed configuration validation.' }
+    $tray.SetEnabled($true)
     $tray.RequestExit()
     if (!$tray.ExitRequested -or $tray.Enabled) { throw 'Exit did not stop automation.' }
     $tray.Dispose(); $tray.Dispose()

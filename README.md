@@ -80,8 +80,9 @@ C:\BACKUP_GUTO\dev\
 │   ├── Kmao.Windows.cs
 │   └── Kmao.Update.ps1
 └── config\
-    ├── bot.conf.example
-    └── kmao.conf.example
+    ├── application.conf.example
+    ├── bot.conf.example           # Legado
+    └── kmao.conf.example          # Legado
 ```
 
 O pacote também inclui documentação, licença e testes. Depois, execute `dev.bat` ou `init_recording.bat` no diretório de destino. O modo portátil não consulta atualizações; os atalhos criados pelo instalador usam o ciclo gerenciado. Não é necessário copiar `.git`, configurações pessoais, gravações ou logs.
@@ -95,8 +96,9 @@ Configurações, frases, gravações e logs ficam no perfil do usuário, indepen
 ```text
 %USERPROFILE%\.kmao-bot\
 ├── config\
-│   ├── bot.conf                 # Configuração do bot
-│   └── kmao.conf                # Configuração do logger
+│   ├── application.conf         # Configuração unificada: bot e logger
+│   ├── bot.conf                 # Legado preservado, quando existente
+│   └── kmao.conf                # Legado preservado, quando existente
 ├── phrases.txt                  # Uma frase por linha
 ├── data\                        # Gravações CSV
 └── logs\                        # Logs operacionais por execução
@@ -104,7 +106,7 @@ Configurações, frases, gravações e logs ficam no perfil do usuário, indepen
 
 A pasta do perfil é obtida pela API `.NET Environment.GetFolderPath(UserProfile)`. Na primeira execução de cada componente, seus arquivos são copiados dos exemplos do repositório. Arquivos existentes na pasta do aplicativo são preservados.
 
-Configurações antigas em `config/kmao.conf` e gravações antigas em `data/` do repositório não são migradas automaticamente. Para reaproveitar uma configuração anterior, copie-a para a nova pasta antes de executar. Personalizações antigas feitas diretamente em `dev.ps1` devem ser transferidas para `bot.conf`. Depois da cópia inicial, edite os arquivos do perfil; alterações nos exemplos do repositório não substituem suas configurações.
+Configurações antigas em `config/kmao.conf` e gravações antigas em `data/` do repositório não são migradas automaticamente. Para reaproveitar uma configuração anterior, copie-a para a nova pasta antes de executar. Desde a 0.3.5, os valores de `bot.conf` e `kmao.conf` já existentes no perfil são importados para `config/application.conf`, mantendo os originais. Personalizações antigas feitas diretamente em `dev.ps1` devem ser transferidas para `application.conf`. Depois da cópia inicial, edite os arquivos do perfil; alterações nos exemplos do repositório não substituem suas configurações.
 
 ## Bot de automação
 
@@ -141,7 +143,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\caminho\kmao-bot\dev
 
 ### Configuração
 
-Edite `%USERPROFILE%\.kmao-bot\config\bot.conf`. Todas as opções estão em [config/bot.conf.example](config/bot.conf.example), incluindo intervalos, área de cliques, quantidade de cliques, chance de digitação e pausas.
+Use **Configurações** na bandeja para editar `%USERPROFILE%\.kmao-bot\config\application.conf`. O arquivo contém todos os parâmetros do bot e do logger, com comentários em português acima de cada opção. Veja [config/application.conf.example](config/application.conf.example). Ao abrir o editor, o bot pausa manualmente. Salve e selecione Run para aplicar. Toda entrada em Running relê e valida o arquivo, inclusive após inatividade; valores inválidos mantêm o ícone cinza e são registrados no log.
 
 Os limites máximos dos intervalos aleatórios são exclusivos. Cada mínimo deve ser menor que seu máximo. Chances aceitam 0 a 100; intervalos e limite de inatividade aceitam 1 a 86400 segundos, pausas aceitam 0 a 60000 ms e limites de cliques aceitam 1 a 100. A área configurada é limitada ao tamanho atual do editor do Notepad.
 
@@ -165,7 +167,7 @@ Ambas as opções inicializam a pasta do aplicativo e a configuração. Use `Ctr
 
 ### Configuração
 
-Edite `%USERPROFILE%\.kmao-bot\config\kmao.conf`:
+Edite as opções do logger no mesmo `%USERPROFILE%\.kmao-bot\config\application.conf` (aplicadas na próxima gravação):
 
 ```ini
 # Intervalo mínimo entre registros de movimento (1..60000 ms)
@@ -205,7 +207,7 @@ O logger também captura entradas sintetizadas por software. Os movimentos do bo
 ## Configuração, erros e logs
 
 - Os arquivos `.conf` aceitam `NOME=inteiro`, sem aspas, linhas vazias e comentários iniciados por `#`.
-- Chaves desconhecidas, duplicadas, valores inválidos, fora dos limites ou pares mínimo/máximo inconsistentes impedem a inicialização.
+- Chaves desconhecidas, duplicadas, valores inválidos, fora dos limites ou pares mínimo/máximo inconsistentes mantêm o bot pausado; no logger, impedem o início da gravação.
 - Falhas de configuração, APIs do Windows e escrita são apresentadas no terminal e registradas em `logs/`, com timestamp, nível e detalhes da exceção quando disponíveis.
 - Os logs operacionais não contêm frases digitadas nem os eventos capturados; esses eventos ficam somente nos CSVs.
 - Falhas tratadas produzem código de saída 1, preservado pelos lançadores `.bat`. O encerramento usa `finally` para liberar recursos; fechamento forçado do processo pode impedir essa limpeza e perder dados ainda em buffer.
@@ -265,8 +267,9 @@ kmao-bot/
 ├── init_recording.bat / activity_logger.ps1
 ├── phrases.txt                  # Modelo inicial de frases
 ├── config/
-│   ├── bot.conf.example
-│   └── kmao.conf.example
+│   ├── application.conf.example
+│   ├── bot.conf.example          # Legado
+│   └── kmao.conf.example         # Legado
 ├── lib/
 │   ├── Kmao.Common.ps1          # Caminhos, configuração e logs
 │   ├── Kmao.Windows.cs          # Hooks, fila e envio de entrada

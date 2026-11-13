@@ -1,4 +1,4 @@
-# Bot pela bandeja e Notepad próprio — 0.3.4
+# Bot pela bandeja e Notepad próprio — 0.3.5
 
 ## Uso
 
@@ -22,6 +22,7 @@ Desde a versão 0.3.3, o cabeçalho desse menu mostra a versão em execução, p
 | --- | --- |
 | Run | Aparece quando parado. Retoma o bot e ativa/maximiza seu Notepad; cria outro se a janela anterior foi fechada. |
 | Stop | Pausa manualmente e mantém o Notepad aberto. Só retoma ao selecionar Run; a inatividade não desfaz o Stop manual. |
+| Configurações | Pausa manualmente e abre `config/application.conf` do perfil no Notepad. Salve e selecione Run para validar e aplicar. |
 | Logs | Abre um console PowerShell com as últimas 50 linhas do log da execução e `Get-Content -Wait`, equivalente a `tail -f`. |
 | Open logs folder | Abre `%USERPROFILE%\.kmao-bot\logs` no Explorador de Arquivos para consultar os logs do bot, lançador e atualizador. |
 | About | Abre o projeto `https://github.com/gut0leao/kmao-bot` no navegador. |
@@ -31,7 +32,7 @@ Um duplo clique no ícone alterna entre Run e Stop. Fechar a janela de Logs não
 encerra o bot. Os logs pertencem à execução atual e não incluem as frases digitadas.
 
 O modo Run habilita a automação, mas ainda respeita o limite de inatividade e os
-intervalos de `config/bot.conf`. Por padrão, aguarda 60 segundos de inatividade e
+intervalos de `config/application.conf`. Por padrão, aguarda 60 segundos de inatividade e
 mais um intervalo aleatório de 30 a 239 segundos antes de interagir. A cor verde
 indica Run habilitado; ela não significa que o bot esteja digitando naquele instante.
 
@@ -128,7 +129,21 @@ sendo um console PowerShell separado, aberto somente pela opção Logs.
 ## Configuração e compatibilidade
 
 As configurações e frases existentes continuam em `%USERPROFILE%\.kmao-bot`.
-O esquema permanece 1; não é necessário apagar ou recriar `bot.conf`.
+Na 0.3.5, o arquivo principal é `%USERPROFILE%\.kmao-bot\config\application.conf`.
+Ele reúne todos os parâmetros de bot/logger, incluindo os tempos da mensagem
+inicial, com comentários em português e unidades acima de cada variável.
+Na primeira execução, os valores explícitos dos antigos `bot.conf` e `kmao.conf`
+são importados, e os originais são preservados. Depois disso, edite `application.conf`.
+Em recuperação para uma versão antiga, ela volta a usar seus arquivos legados;
+editações feitas apenas no arquivo unificado não são copiadas de volta para eles.
+
+Configurações pausa manualmente antes de abrir o arquivo. Salve com Ctrl+S e use
+Run: o bot relê e valida todo o arquivo antes de ficar verde. A inicialização e
+a retomada por inatividade fazem a mesma releitura. O novo limite de inatividade
+é considerado já na decisão de retomar. O bot mantém uma cópia coerente durante
+cada ciclo; um arquivo inválido não substitui parcialmente os valores em memória,
+não ativa o Notepad e mantém o ícone cinza, com diagnóstico no log. Corrija e use
+Run novamente. O logger aplica suas opções ao iniciar uma nova gravação.
 
 As mesmas opções de intervalos, quantidade de cliques e chance de digitação continuam
 válidas. A área de cliques agora é limitada ao editor, em vez da tela principal.

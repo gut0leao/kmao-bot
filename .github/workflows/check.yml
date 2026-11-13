@@ -23,6 +23,7 @@ jobs:
         shell: pwsh
         run: |
           ./tests/Test-Core.ps1
+          ./tests/Test-Configuration.ps1
           ./tests/Test-Updates.ps1
           ./tests/Test-Authenticode.ps1
           ./tests/Test-BotHost.ps1
@@ -33,6 +34,7 @@ jobs:
         shell: powershell
         run: |
           ./tests/Test-Core.ps1
+          ./tests/Test-Configuration.ps1
           ./tests/Test-Updates.ps1
           ./tests/Test-Authenticode.ps1
           ./tests/Test-BotHost.ps1

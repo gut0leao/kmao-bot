@@ -1,6 +1,6 @@
 # Instalação, atualização e publicação
 
-A versão do código é `0.3.4`, com processo próprio KMAO Bot para a bandeja.
+A versão do código é `0.3.5`, com configuração unificada e releitura em cada Run.
 Os pacotes de teste são gerados explicitamente sem Authenticode. A assinatura do
 publicador Windows permanece pendente de emissão do certificado e validação com
 Smart App Control ativo. Veja [CODE_SIGNING.md](CODE_SIGNING.md).
@@ -158,8 +158,8 @@ Execute os testes antes de gerar uma versão para convidados:
 
 O resultado fica em `dist/release/`:
 
-- `kmao-setup-0.3.4.exe`: instalação inicial ou reinstalação manual.
-- `kmao-0.3.4.zip`: código da versão usado pelo atualizador.
+- `kmao-setup-0.3.5.exe`: instalação inicial ou reinstalação manual.
+- `kmao-0.3.5.zip`: código da versão usado pelo atualizador.
 - `kmao-manifest.json` e `kmao-manifest.sig`: metadados e assinatura RSA/SHA-256.
 - `kmao-release-notes.md`: notas somente da versão atual, para usar na descrição da Release.
 - `payload/` e `installer-source/`: pastas intermediárias, não destinadas à Release.
@@ -192,7 +192,7 @@ Por padrão, não cria Release. Se `create_draft` estiver habilitado, cria apena
 para os convidados depende de uma ação posterior no GitHub. Os workflows de
 validação em pushes/PRs não recebem nem precisam da chave de publicação.
 
-## Testar a atualização da 0.3.3 para a 0.3.4
+## Testar a atualização para a 0.3.5
 
 A bandeja agora pertence ao processo `Kmao.Bot.exe`, com descrição `KMAO Bot`.
 A entrada antiga de PowerShell pode ficar no cache do Windows.
@@ -201,14 +201,15 @@ O pacote de teste, assinado com a mesma chave RSA das instalações existentes,
 é gerado sem Authenticode explicitamente:
 
 ```bash
-./scripts/kmao.sh build --allow-unsigned --output ./dist/release-0.3.4
+./scripts/kmao.sh build --allow-unsigned --output ./dist/release-0.3.5
 ```
 
 Se esse pacote já foi gerado, use-o sem repetir o build na mesma pasta. Após o
 commit e o push, publique com `./scripts/kmao.sh publish`. Feche o bot instalado e
 abra novamente pelo atalho do menu Iniciar. Aceite a oferta de atualização e confira
-`KMAO 0.3.4` no cabeçalho do menu da bandeja. A nova opção `Open logs folder` abre a
-pasta de diagnósticos. Não execute o instalador 0.3.4 manualmente para esse teste,
+`KMAO 0.3.5` no cabeçalho do menu da bandeja. A opção Configurações abre
+`%USERPROFILE%\.kmao-bot\config\application.conf`; os valores legados são importados
+sem alterar os arquivos originais. Salve e selecione Run para aplicar. Não execute o instalador 0.3.4 manualmente para esse teste,
 pois o objetivo é validar a atualização da instalação 0.3.3 pelo ZIP assinado.
 
 Se não aparecer a oferta, consulte os arquivos `launcher-*.log` em
