@@ -114,7 +114,11 @@ function Get-KmaoUpdateOffer {
     $current = Read-KmaoState $InstallRoot
     [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
     # Explicit prerelease selection: GitHub's /latest endpoint excludes prereleases.
-    $releases = @(Invoke-RestMethod -Uri 'https://api.github.com/repos/gut0leao/kmao-bot/releases?per_page=100' -TimeoutSec 8 -Headers @{ 'User-Agent' = 'KMAO-Bot'; Accept = 'application/vnd.github+json' } -ErrorAction Stop)
+    # In Windows PowerShell 5.1, Invoke-RestMethod emits a JSON array as one
+    # pipeline object. Capture the response first so @() enumerates its elements,
+    # rather than wrapping that array inside another array and filtering it as one release.
+    $response = Invoke-RestMethod -Uri 'https://api.github.com/repos/gut0leao/kmao-bot/releases?per_page=100' -TimeoutSec 8 -Headers @{ 'User-Agent' = 'KMAO-Bot'; Accept = 'application/vnd.github+json' } -ErrorAction Stop
+    $releases = @($response)
     $candidates = @($releases | Where-Object { !$_.draft -and $_.prerelease -and $_.tag_name -match '^v\d+\.\d+\.\d+$' -and (ConvertTo-KmaoVersion $_.tag_name.Substring(1)) -gt (ConvertTo-KmaoVersion $current.version) } | Sort-Object { ConvertTo-KmaoVersion $_.tag_name.Substring(1) } -Descending)
     foreach ($release in $candidates) {
         $manifestPath = Join-Path $Workspace 'manifest.json'

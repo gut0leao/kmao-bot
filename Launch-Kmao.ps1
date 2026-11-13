@@ -21,13 +21,16 @@ try {
                 $offer = @{ Rollback = $true }
             }
             else {
+                Write-KmaoLog INFO "Checking testing-channel updates. Installed: $((Read-KmaoState $InstallRoot).version)."
                 $workspace = Join-Path $KmaoRoot ('updates/' + [Guid]::NewGuid().ToString('N'))
                 New-Item -ItemType Directory -Path $workspace -Force | Out-Null
                 $offer = Get-KmaoUpdateOffer $InstallRoot $workspace
                 if ($null -ne $offer) {
+                    Write-KmaoLog INFO "Update available: $($offer.Manifest.version)."
                     $current = (Read-KmaoState $InstallRoot).version
                     $question = "Installed: $current`nAvailable: $($offer.Manifest.version)`n`n$($offer.Manifest.notes)`n`nUpdate now? Active KMAO recordings will be closed cleanly."
                 }
+                else { Write-KmaoLog INFO 'No newer published prerelease is available in the testing channel.' }
             }
             if ($null -ne $offer) {
                 if (Confirm-KmaoUpdate $question) {
@@ -42,6 +45,7 @@ try {
                     $handedOff = $true
                     return
                 }
+                else { Write-KmaoLog INFO 'Update or rollback declined by the user.' }
             }
         }
         catch { Write-KmaoLog WARN "Update check failed; continuing installed version. $($_.Exception.Message)" }

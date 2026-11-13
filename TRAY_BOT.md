@@ -120,9 +120,11 @@ a integração com o protocolo de atualização das versões anteriores.
 
 ## Atualização automática
 
-A 0.3.0 usa o mesmo protocolo de atualização e a mesma identidade de assinatura.
-Usuários da 0.2.1 podem receber a nova versão ao abrir um atalho da instalação,
-confirmar a atualização e passar a usar a bandeja e o Notepad próprio.
+A 0.3.1 corrige a consulta à API do GitHub no Windows PowerShell 5.1, mantendo
+o protocolo e a identidade de assinatura. Usuários das versões até 0.3.0 precisam
+instalar `kmao-setup-0.3.1.exe` manualmente uma vez: o defeito está no atualizador
+já instalado. As próximas versões poderão ser oferecidas ao abrir os atalhos,
+com confirmação antes da instalação.
 
 Esses recursos estão no código versionado e não exigem recriar os atalhos para
 funcionar. A publicação deve incluir o ZIP, o instalador e o par manifesto/assinatura

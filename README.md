@@ -8,6 +8,9 @@ documento. Há empacotamento portátil, instalador por usuário e atualização 
 confirmação ao iniciar. O [guia da bandeja e do Notepad](TRAY_BOT.md) descreve os
 controles Run, Stop, Logs, About e Exit.
 
+**Atualização da 0.2.1/0.3.0:** instale o instalador 0.3.1 manualmente uma vez para
+corrigir a consulta de novas versões. Configurações, frases e gravações são preservadas.
+
 Consulte o [guia de instalação e publicação](INSTALLATION.md) para gerar o instalador, configurar a assinatura e preparar as Releases. Nenhuma versão é publicada automaticamente.
 
 ## Requisitos

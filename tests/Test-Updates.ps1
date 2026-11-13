@@ -83,7 +83,9 @@ try {
         }
         return @{ tag_name = "v$Version"; draft = $false; prerelease = $Prerelease; assets = $assets }
     }
-    function Invoke-RestMethod { return @((New-TestRelease '9.0.0' $false), (New-TestRelease '0.2.1' $true), (New-TestRelease '0.1.0' $true)) }
+    # Windows PowerShell 5.1 emits a JSON array as one pipeline object.
+    # Do not let the mock enumerate it: that hides real channel-selection failures.
+    function Invoke-RestMethod { return ,@((New-TestRelease '9.0.0' $false), (New-TestRelease '0.2.1' $true), (New-TestRelease '0.1.0' $true)) }
     $script:fixtureManifest = $manifestPath
     $script:fixtureSignature = $signaturePath
     function Receive-KmaoFile {
@@ -92,10 +94,14 @@ try {
         Copy-Item -LiteralPath $source -Destination $Destination -Force
     }
     $offer = Get-KmaoUpdateOffer $install $workspace
-    Assert-True ($offer.Manifest.version -eq '0.2.1') 'Testing channel selected a stable/older release.'
+    Assert-True ($null -ne $offer -and $offer.Manifest.version -eq '0.2.1') 'Testing channel failed to select a newer prerelease from a non-enumerated API array.'
     $unexpected = New-TestRelease '0.2.1' $true
     $unexpected.assets[0].browser_download_url = 'https://example.com/evil.json'
     Assert-Throws { Get-KmaoAssetUrl $unexpected 'kmao-manifest.json' } 'origin'
+    function Invoke-RestMethod { return ,@((New-TestRelease '0.2.1' $true)) }
+    Assert-True ((Get-KmaoUpdateOffer $install $workspace).Manifest.version -eq '0.2.1') 'A single prerelease in the API array was missed.'
+    function Invoke-RestMethod { return ,@() }
+    Assert-True ($null -eq (Get-KmaoUpdateOffer $install $workspace)) 'An empty API array produced an update offer.'
     function Invoke-RestMethod { throw 'simulated offline' }
     Assert-Throws { Get-KmaoUpdateOffer $install $workspace } 'offline'
 

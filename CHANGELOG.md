@@ -1,5 +1,15 @@
 # Alterações
 
+## 0.3.1
+
+- Corrige a leitura da lista de releases no Windows PowerShell 5.1, que impedia a oferta de atualizações sem registrar erro.
+- Registra a consulta, a disponibilidade ou ausência de nova versão e a recusa da atualização nos logs do lançador.
+- Adiciona regressão com arrays não enumerados, como os retornados pela API real, incluindo listas vazias e com uma única release.
+
+### Instalações anteriores
+
+Instale `kmao-setup-0.3.1.exe` manualmente uma vez, após fechar o bot e o logger. As versões até 0.3.0 contêm o defeito na consulta e não conseguem obter esta correção automaticamente. Configurações, frases e gravações são preservadas. As próximas versões poderão ser oferecidas ao iniciar pelos atalhos da instalação.
+
 ## 0.3.0
 
 - Abre um Notepad próprio, maximizado, com a mensagem `KMAO BOT running...`.
