@@ -7,6 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $files = @(
+    'host/Kmao.Bot.cs', 'tests/Test-BotHost.ps1', 'tests/Test-BotHostInteractive.ps1',
     'VERSION', 'CHANGELOG.md', 'Start-Kmao.ps1', 'Launch-Kmao.ps1', 'Apply-KmaoUpdate.ps1',
     'lib/Kmao.Update.ps1', 'lib/Kmao.Desktop.cs', 'lib/Kmao.Notepad.cs', 'Show-KmaoLogs.ps1',
     'tests/Test-Desktop.ps1', 'tests/Test-DesktopInteractive.ps1', 'tests/Test-BotDesktopLifecycle.ps1',

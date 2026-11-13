@@ -50,6 +50,17 @@ try {
         }
         catch { Write-KmaoLog WARN "Update check failed; continuing installed version. $($_.Exception.Message)" }
     }
+    $botHost = Join-Path $PSScriptRoot 'Kmao.Bot.exe'
+    if ($Component -eq 'bot' -and (Test-Path -LiteralPath $botHost)) {
+        $hostArguments = @()
+        if ($HealthToken) { $hostArguments += @('-HealthToken', $HealthToken) }
+        $processOptions = @{ FilePath = $botHost; Wait = $true; PassThru = $true }
+        if ($hostArguments.Count) { $processOptions.ArgumentList = $hostArguments }
+        $process = Start-Process @processOptions
+        try { if ($process.ExitCode -ne 0) { throw "KMAO Bot host failed with exit code $($process.ExitCode)." } }
+        finally { $process.Dispose() }
+        return
+    }
     $scriptName = if ($Component -eq 'bot') { 'dev.ps1' } else { 'activity_logger.ps1' }
     $global:LASTEXITCODE = 0
     & (Join-Path $PSScriptRoot $scriptName) -HealthToken $HealthToken

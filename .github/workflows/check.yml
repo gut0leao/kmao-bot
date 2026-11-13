@@ -25,6 +25,7 @@ jobs:
           ./tests/Test-Core.ps1
           ./tests/Test-Updates.ps1
           ./tests/Test-Authenticode.ps1
+          ./tests/Test-BotHost.ps1
           ./tests/Test-Lifecycle.ps1
           ./tests/Test-Desktop.ps1
       - name: Windows PowerShell 5.1 compatibility
@@ -34,5 +35,6 @@ jobs:
           ./tests/Test-Core.ps1
           ./tests/Test-Updates.ps1
           ./tests/Test-Authenticode.ps1
+          ./tests/Test-BotHost.ps1
           ./tests/Test-Lifecycle.ps1
           ./tests/Test-Desktop.ps1

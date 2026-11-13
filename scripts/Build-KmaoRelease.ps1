@@ -39,7 +39,7 @@ try {
     if ($rsa.KeySize -lt 3072 -or $rsa.ToXmlString($false) -cne $public.ToXmlString($false)) { throw 'Signing keys do not match or are too small.' }
     $payload = Join-Path $OutputDirectory 'payload'
     & (Join-Path $repo 'Export-Kmao.ps1') -Destination $payload -SkipArchive
-    if ($env:OS -eq 'Windows_NT' -and $PSVersionTable.PSEdition -eq 'Desktop') { New-KmaoCompiledRuntime $payload }
+    if ($env:OS -eq 'Windows_NT' -and $PSVersionTable.PSEdition -eq 'Desktop') { New-KmaoCompiledRuntime $payload; New-KmaoBotHost $payload }
     if ($AuthenticodeSigner) {
         foreach ($file in Get-ChildItem -LiteralPath $payload -File -Recurse | Where-Object { $_.Extension -in @('.ps1', '.dll', '.exe') }) {
             if ($file.Extension -eq '.ps1') {

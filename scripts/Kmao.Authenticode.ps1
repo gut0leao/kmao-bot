@@ -43,6 +43,29 @@ function New-KmaoCompiledRuntime {
     Add-Type -Path $sources -ReferencedAssemblies $references -OutputAssembly (Join-Path $Payload 'lib/Kmao.Runtime.dll') -OutputType Library -ErrorAction Stop
 }
 
+function New-KmaoBotHost {
+    param([string]$Payload)
+    if ($env:OS -ne 'Windows_NT' -or $PSVersionTable.PSEdition -ne 'Desktop') { throw 'Compiling the bot host requires Windows PowerShell 5.1.' }
+    $version = [IO.File]::ReadAllText((Join-Path $Payload 'VERSION')).Trim()
+    if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid host version.' }
+    foreach ($assembly in @('System.Windows.Forms', 'System.Drawing', 'UIAutomationClient', 'UIAutomationTypes', 'WindowsBase')) { Add-Type -AssemblyName $assembly }
+    $metadata = Join-Path ([IO.Path]::GetTempPath()) ('kmao-host-version-' + [Guid]::NewGuid().ToString('N') + '.cs')
+    try {
+        [IO.File]::WriteAllText($metadata, ('[assembly:System.Reflection.AssemblyVersion("{0}.0")][assembly:System.Reflection.AssemblyFileVersion("{0}.0")]' -f $version))
+        $references = @('System.dll', 'System.Core.dll', [Management.Automation.PowerShell].Assembly.Location,
+            [System.Windows.Forms.Application].Assembly.Location, [System.Drawing.Bitmap].Assembly.Location,
+            [System.Windows.Automation.AutomationElement].Assembly.Location, [System.Windows.Automation.ControlType].Assembly.Location,
+            [System.Windows.Threading.Dispatcher].Assembly.Location) | Select-Object -Unique
+        # The native app owns its UI/automation types. The separate runtime DLL
+        # remains for the logger and direct PowerShell development entry points.
+        $sources = @((Join-Path $Payload 'host/Kmao.Bot.cs'), $metadata)
+        foreach ($name in @('Kmao.Windows.cs', 'Kmao.Desktop.cs', 'Kmao.Notepad.cs')) { $sources += Join-Path $Payload "lib/$name" }
+        Add-Type -Path $sources -ReferencedAssemblies $references -OutputAssembly (Join-Path $Payload 'Kmao.Bot.exe') -OutputType WindowsApplication -ErrorAction Stop
+        [IO.File]::WriteAllText((Join-Path $Payload 'Kmao.Bot.exe.config'), '<?xml version="1.0"?><configuration><startup useLegacyV2RuntimeActivationPolicy="true"><supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.6"/></startup></configuration>')
+    }
+    finally { Remove-Item -LiteralPath $metadata -Force }
+}
+
 function Get-KmaoInnoSignCommand {
     param([string]$SignerScript)
     # Inno expands $q to a quote and $f to the quoted file name. Escape literal

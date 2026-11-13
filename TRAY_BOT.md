@@ -1,4 +1,4 @@
-# Bot pela bandeja e Notepad próprio — 0.3.3
+# Bot pela bandeja e Notepad próprio — 0.3.4
 
 ## Uso
 
@@ -105,6 +105,26 @@ a abertura. Nesse caso, o programa registra o erro e preserva os documentos exis
 A janela de console do bot é ocultada quando pertence exclusivamente ao lançamento
 independente do aplicativo. Consoles compartilhados/interativos são preservados.
 
+## Nome nas configurações do Windows
+
+Desde a 0.3.4, os pacotes gerados no Windows incluem `Kmao.Bot.exe`. O lançador
+consulta atualizações e inicia esse executável, que hospeda o Windows PowerShell
+5.1 e a bandeja dentro do próprio processo. A descrição/produto do executável é
+`KMAO Bot`, com o código da interface/automação incorporado ao executável e identidade de aplicativo `Kmao.Bot`, igual à dos atalhos existentes.
+Isso evita atribuir o novo ícone ao processo `Windows PowerShell` nas configurações
+da barra de tarefas. Não copia nem renomeia o executável do PowerShell.
+
+A correção chega pela atualização automática, sem reinstalação dos atalhos. O
+Windows pode manter entradas antigas em cache; a entrada anterior de Windows
+PowerShell pode continuar visível mesmo após sair da versão antiga. O KMAO não
+apaga o cache ou altera as preferências de outros aplicativos. Veja a
+[documentação da área de notificação](https://learn.microsoft.com/en-us/windows/win32/shell/notification-area).
+
+Executar `dev.ps1` diretamente no checkout continua sendo um modo de desenvolvimento
+hospedado em PowerShell, com esse nome no Windows. Para testar a identidade própria,
+use o build completo e o lançador/atalho da instalação. A janela de Logs continua
+sendo um console PowerShell separado, aberto somente pela opção Logs.
+
 ## Configuração e compatibilidade
 
 As configurações e frases existentes continuam em `%USERPROFILE%\.kmao-bot`.
@@ -129,7 +149,7 @@ apenas o estado do controlador; não executam scriptblocks PowerShell nessa thre
 
 O primeiro comando inclui compilação dos componentes, ícones, ciclo da bandeja,
 acompanhamento de logs e testes portáveis/sessão/build. O segundo é explicitamente
-interativo: abre e descarta um documento de teste e valida o processo completo do
+interativo: testa também o executável nativo com perfil e eventos privados; abre e descarta um documento de teste e valida o processo completo do
 bot com perfil temporário e ciclos de interação desabilitados. Feche outra instância
 do KMAO antes desse teste. Outros documentos do Notepad não são usados como alvo.
 

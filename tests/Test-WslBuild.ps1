@@ -21,6 +21,7 @@ try {
     . (Join-Path $repo 'lib/Kmao.Update.ps1')
     $manifest = Read-KmaoSignedManifest $manifestPath (Join-Path $output 'kmao-manifest.sig') $public
     if (!(Test-Path -LiteralPath (Join-Path $output $manifest.asset))) { throw 'Signed package was not created on the WSL filesystem.' }
+    if (!(Test-Path -LiteralPath (Join-Path $output 'payload/Kmao.Bot.exe'))) { throw 'Native bot host was not packaged.' }
     if ($compiler) {
         if (!(Test-Path -LiteralPath (Join-Path $output "kmao-setup-$($manifest.version).exe"))) { throw 'Installer was not compiled.' }
         Write-Host 'PASS: Inno Setup compiles the Windows installer directly from the WSL checkout.'

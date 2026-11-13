@@ -6,7 +6,8 @@ O projeto usa scripts PowerShell e bibliotecas C# para as APIs do Windows. O bot
 roda pela bandeja, cria seu próprio Notepad maximizado e interage somente com esse
 documento. Há empacotamento portátil, instalador por usuário e atualização com
 confirmação ao iniciar. O [guia da bandeja e do Notepad](TRAY_BOT.md) descreve os
-controles Run, Stop, Logs, About e Exit.
+controles Run, Stop, Logs, About e Exit. Desde a 0.3.4, o build inclui o processo
+próprio `Kmao.Bot.exe`, identificado como KMAO Bot pelo Windows.
 
 **Distribuição Windows:** a próxima versão está em preparação para assinatura
 Authenticode. Os instaladores publicados podem ser bloqueados pelo Smart App Control.

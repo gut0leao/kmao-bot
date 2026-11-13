@@ -1,5 +1,14 @@
 # Alterações
 
+## 0.3.4
+
+- Executa o bot no processo próprio `Kmao.Bot.exe`, com descrição e produto `KMAO Bot`, em vez de hospedar a bandeja no `powershell.exe`.
+- Define a identidade `Kmao.Bot` no processo, mantendo a mesma identidade dos atalhos existentes.
+- Preserva a consulta de atualização no lançador, os eventos de prontidão/encerramento, a bandeja e a automação no Notepad.
+- Mantém o PowerShell 5.1 dentro do processo do aplicativo; a correção funciona por atualização automática, sem recriar atalhos.
+
+O Windows pode manter a entrada antiga `Windows PowerShell` em cache na configuração da bandeja. A nova execução usa `KMAO Bot`. Os pacotes de teste continuam sem Authenticode; a assinatura RSA das atualizações permanece a mesma.
+
 ## 0.3.3
 
 - Reutiliza a janela recém-aberta do Notepad quando vazia e sem título, evitando uma segunda janela desnecessária sem alterar sessões anteriores.

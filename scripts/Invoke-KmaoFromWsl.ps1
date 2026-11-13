@@ -30,11 +30,13 @@ try {
             & (Join-Path $RepositoryPath 'tests/Test-Core.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-Updates.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-Authenticode.ps1')
+            & (Join-Path $RepositoryPath 'tests/Test-BotHost.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-Lifecycle.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-Desktop.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-WslBuild.ps1')
         }
         desktop-test {
+            & (Join-Path $RepositoryPath 'tests/Test-BotHostInteractive.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-DesktopInteractive.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-BotDesktopLifecycle.ps1')
         }

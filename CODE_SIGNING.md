@@ -86,6 +86,10 @@ exportar a chave privada nem gerar outra chave RSA do atualizador.
 1. Copia os arquivos para `payload`, sem alterar o código de trabalho.
 2. No Windows PowerShell 5.1, compila os três arquivos C# em
    `lib/Kmao.Runtime.dll`, com as referências de .NET Framework e UI Automation.
+   Compila também `Kmao.Bot.exe`, que hospeda PowerShell e a bandeja no próprio
+   processo, incorporando os tipos de interface/automação no executável, com
+   metadados KMAO Bot e versão obtida de `VERSION`. A DLL separada atende ao logger
+   e às entradas PowerShell de desenvolvimento.
 3. Assina todos os `.ps1`, `.dll` e `.exe` do payload. Os scripts recebem UTF-8
    com BOM antes da assinatura, para Windows PowerShell 5.1.
 4. Gera o ZIP, os hashes e o manifesto RSA a partir dos **bytes já assinados**.
