@@ -68,7 +68,11 @@ function Read-KmaoConfig {
 function Import-KmaoWindows {
     if ($env:OS -ne 'Windows_NT') { throw 'KMAO requires Windows and Windows PowerShell 5.1 or later.' }
     if (!('Kmao.WindowsInput' -as [type])) {
-        Add-Type -Path (Join-Path $PSScriptRoot 'Kmao.Windows.cs') -ErrorAction Stop
+        $runtime = Join-Path $PSScriptRoot 'Kmao.Runtime.dll'
+        if (Test-Path -LiteralPath $runtime) {
+            Add-Type -Path $runtime -ErrorAction Stop
+        }
+        else { Add-Type -Path (Join-Path $PSScriptRoot 'Kmao.Windows.cs') -ErrorAction Stop }
     }
     Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
 }

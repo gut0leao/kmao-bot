@@ -18,11 +18,13 @@ jobs:
         run: |
           bash -n scripts/kmao.sh
           python3 tests/test_wsl_bridge.py
+          python3 tests/test_publish_release.py
       - name: Core and update tests
         shell: pwsh
         run: |
           ./tests/Test-Core.ps1
           ./tests/Test-Updates.ps1
+          ./tests/Test-Authenticode.ps1
           ./tests/Test-Lifecycle.ps1
           ./tests/Test-Desktop.ps1
       - name: Windows PowerShell 5.1 compatibility
@@ -31,5 +33,6 @@ jobs:
         run: |
           ./tests/Test-Core.ps1
           ./tests/Test-Updates.ps1
+          ./tests/Test-Authenticode.ps1
           ./tests/Test-Lifecycle.ps1
           ./tests/Test-Desktop.ps1

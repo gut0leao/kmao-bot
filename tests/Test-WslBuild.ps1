@@ -16,7 +16,7 @@ try {
     $compiler = $null
     try { $compiler = Resolve-KmaoIscc }
     catch { Write-Host 'SKIP: installer compilation (Inno Setup not installed); testing signed ZIP only.' }
-    & (Join-Path $repo 'scripts/Invoke-KmaoFromWsl.ps1') -Action build -RepositoryPath $repo -PrivateKeyPath $private -PublicKeyPath $public -OutputDirectory $output -IsccPath $compiler -SkipInstaller:(!$compiler)
+    & (Join-Path $repo 'scripts/Invoke-KmaoFromWsl.ps1') -Action build -RepositoryPath $repo -PrivateKeyPath $private -PublicKeyPath $public -OutputDirectory $output -IsccPath $compiler -SkipInstaller:(!$compiler) -AllowUnsigned
     $manifestPath = Join-Path $output 'kmao-manifest.json'
     . (Join-Path $repo 'lib/Kmao.Update.ps1')
     $manifest = Read-KmaoSignedManifest $manifestPath (Join-Path $output 'kmao-manifest.sig') $public

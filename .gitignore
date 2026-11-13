@@ -124,3 +124,7 @@ dist/
 *.private.xml
 *.pfx
 *.p12
+
+# Python development tooling
+__pycache__/
+*.pyc

@@ -1,5 +1,16 @@
 # Alterações
 
+## 0.3.2
+
+Em preparação: distribuição com Authenticode depende da emissão/configuração do certificado e de teste com Smart App Control ativo. Nenhum instalador compatível foi publicado nesta etapa.
+
+- Adiciona `./scripts/kmao.sh publish`, baseado em `VERSION`, com publicação de prerelease, modo rascunho e simulação local.
+- Exige provedor Authenticode no build de distribuição; permite build de desenvolvimento sem assinatura apenas por opção explícita.
+- Prepara assinatura de scripts, runtime C# pré-compilado, dispatcher, instalador, desinstalador e cópias temporárias do Inno Setup.
+- Calcula ZIP e hashes depois da assinatura e verifica finalidade Code Signing, cadeia reconhecida pelo Windows e timestamp.
+- Adiciona adaptador para certificado em token/HSM exposto no repositório do Windows, sem exportação de chave ou captura de PIN.
+- Documenta os requisitos do certificado, as limitações de A3/gov.br e a emissão pendente; pausa o workflow de release até configurar o provedor.
+
 ## 0.3.1
 
 - Corrige a leitura da lista de releases no Windows PowerShell 5.1, que impedia a oferta de atualizações sem registrar erro.

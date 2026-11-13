@@ -8,6 +8,10 @@ documento. Há empacotamento portátil, instalador por usuário e atualização 
 confirmação ao iniciar. O [guia da bandeja e do Notepad](TRAY_BOT.md) descreve os
 controles Run, Stop, Logs, About e Exit.
 
+**Distribuição Windows:** a próxima versão está em preparação para assinatura
+Authenticode. Os instaladores publicados podem ser bloqueados pelo Smart App Control.
+Veja [assinatura e pendências de emissão](CODE_SIGNING.md).
+
 **Atualização da 0.2.1/0.3.0:** instale o instalador 0.3.1 manualmente uma vez para
 corrigir a consulta de novas versões. Configurações, frases e gravações são preservadas.
 
@@ -30,12 +34,22 @@ Eles chamam o PowerShell do Windows e convertem os caminhos automaticamente:
 ./scripts/kmao.sh doctor
 ./scripts/kmao.sh test
 ./scripts/kmao.sh keygen  # Somente na primeira preparação da assinatura
-./scripts/kmao.sh build
+./scripts/kmao.sh build --allow-unsigned --output ./dist/dev-teste # Desenvolvimento apenas
 ```
 
 O Inno Setup 6 precisa estar instalado no Windows para gerar o `.exe`. Os arquivos
 ficam em `dist/release/` no repositório WSL; as chaves padrão ficam no perfil do
 usuário Windows, fora do repositório. Veja o [fluxo WSL completo](INSTALLATION.md#desenvolvimento-no-wsl).
+
+Após gerar os pacotes, fazer commit e push, publique a versão definida em `VERSION`:
+
+```bash
+./scripts/kmao.sh publish            # Publica como prerelease
+./scripts/kmao.sh publish --dry-run  # Confere sem acessar o GitHub
+```
+
+O comando encontra os pacotes em `dist/release-VERSION` ou `dist/release`. Veja as
+[opções de publicação](INSTALLATION.md#publicar-pelo-wsl-com-um-comando).
 
 ## Copiar para outro computador ou diretório
 

@@ -1,6 +1,9 @@
 # Instalação, atualização e publicação
 
-A versão atual de teste é `0.3.1`. O instalador e o atualizador estão implementados;
+A última versão publicada é `0.3.1`; a `0.3.2` está em preparação para assinatura
+Authenticode. A distribuição compatível com Smart App Control depende da emissão
+do certificado e de teste em Windows protegido. Veja [CODE_SIGNING.md](CODE_SIGNING.md).
+O instalador e o atualizador estão implementados;
 nenhuma Release ou chave de produção é criada automaticamente ao clonar o projeto.
 
 ## Como a instalação funciona
@@ -57,7 +60,7 @@ Bash ou Zsh do WSL, a partir da raiz do projeto:
 ./scripts/kmao.sh test      # Testes de núcleo, sessão, bandeja e build no Windows
 ./scripts/kmao.sh desktop-test # Interativo: Notepad próprio e encerramento do bot
 ./scripts/kmao.sh keygen    # Uma vez: chaves no perfil do usuário Windows
-./scripts/kmao.sh build     # ZIP assinado, manifesto, assinatura e instalador
+./scripts/kmao.sh build --authenticode-signer /mnt/c/caminho/Provider.ps1 # Distribuição
 ```
 
 O comando usa a interoperabilidade do WSL (`powershell.exe`) e converte os caminhos
@@ -70,10 +73,12 @@ compilador no PATH e nos diretórios de instalação usuais. Se ele estiver em o
 local, passe o caminho usando a notação WSL, com aspas quando houver espaços:
 
 ```bash
-./scripts/kmao.sh build --iscc '/mnt/c/Program Files (x86)/Inno Setup 6/ISCC.exe'
+./scripts/kmao.sh build --authenticode-signer /mnt/c/caminho/Provider.ps1 \
+  --iscc '/mnt/c/Program Files (x86)/Inno Setup 6/ISCC.exe'
 ```
 
-O build verifica o compilador antes de criar a saída ou ler as chaves. Para gerar
+O build verifica o compilador antes de criar a saída ou ler as chaves. Para desenvolvimento sem Authenticode, use `--allow-unsigned` explicitamente;
+esse modo não resolve o bloqueio pelo SAC. Para gerar
 somente o ZIP assinado e seus metadados, use `./scripts/kmao.sh build --skip-installer`.
 Para apenas empacotar os scripts, sem chaves nem Inno Setup:
 
@@ -93,6 +98,7 @@ Windows, onde a proteção por ACL está disponível:
 ./scripts/kmao.sh build \
   --private-key '/mnt/c/caminho-seguro/private.xml' \
   --public-key '/mnt/c/caminho-seguro/public.xml' \
+  --authenticode-signer /mnt/c/caminho/Provider.ps1 \
   --output ./dist/release-teste
 ```
 
@@ -126,8 +132,9 @@ para assinar todas as atualizações reconhecidas pelas instalações existentes
 Nunca a inclua em commits, Releases, ZIPs ou mensagens.
 
 A assinatura dos pacotes é independente de Authenticode. Não há certificado
-comercial de assinatura de código configurado; o instalador pode apresentar o
-publicador como desconhecido no Windows. A chave pública é incorporada ao
+de assinatura de código configurado. O build de distribuição agora exige um
+provedor; o modo de desenvolvimento `--allow-unsigned` pode ser bloqueado pelo
+Windows e não deve ser distribuído como compatível com Smart App Control. A chave pública é incorporada ao
 instalador inicial e preservada nas reinstalações. A rotação da identidade não faz
 parte do protocolo 1; trocar de chave exige uma migração deliberada das instalações.
 
@@ -144,13 +151,14 @@ Execute os testes antes de gerar uma versão para convidados:
 .\scripts\Build-KmaoRelease.ps1 `
   -PrivateKeyPath "$env:USERPROFILE\.kmao-signing\private.xml" `
   -PublicKeyPath "$env:USERPROFILE\.kmao-signing\public.xml" `
+  -AuthenticodeSigner "C:\caminho\Provider.ps1" `
   -IsccPath "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
 ```
 
 O resultado fica em `dist/release/`:
 
-- `kmao-setup-0.3.1.exe`: instalação inicial ou reinstalação manual.
-- `kmao-0.3.1.zip`: código da versão usado pelo atualizador.
+- `kmao-setup-0.3.2.exe`: instalação inicial ou reinstalação manual, após configurar o provedor.
+- `kmao-0.3.2.zip`: código da versão usado pelo atualizador.
 - `kmao-manifest.json` e `kmao-manifest.sig`: metadados e assinatura RSA/SHA-256.
 - `kmao-release-notes.md`: notas somente da versão atual, para usar na descrição da Release.
 - `payload/` e `installer-source/`: pastas intermediárias, não destinadas à Release.
@@ -174,10 +182,47 @@ O workflow testa no Windows PowerShell, gera o instalador com Inno Setup e entre
 os quatro anexos de distribuição e o arquivo de notas como artifact. As chaves temporárias ficam no diretório do
 runner e são excluídas no final; não são enviadas como artifacts.
 
+O workflow de release está temporariamente bloqueado antes da leitura de segredos
+até configurar o provedor Authenticode no runner. As instruções seguintes descrevem
+o fluxo após essa configuração.
+
 Por padrão, não cria Release. Se `create_draft` estiver habilitado, cria apenas um
 **rascunho não publicado**, marcado como prerelease, na tag `v0.3.1`. A publicação
 para os convidados depende de uma ação posterior no GitHub. Os workflows de
 validação em pushes/PRs não recebem nem precisam da chave de publicação.
+
+## Publicar pelo WSL com um comando
+
+Depois de gerar os pacotes, fazer o commit e enviar ao GitHub:
+
+```bash
+git push origin main
+./scripts/kmao.sh publish
+```
+
+`publish` lê `VERSION`, usa a tag `vX.Y.Z`, o título `KMAO X.Y.Z — testes` e as
+notas `kmao-release-notes.md`. Publica diretamente como **prerelease** com os quatro
+anexos: instalador, ZIP, manifesto e assinatura. Não executa build, commit nem push.
+
+Procura os pacotes em `dist/release-X.Y.Z`; se essa pasta não existir, usa
+`dist/release`, que é a saída padrão do build. Para outro diretório:
+
+```bash
+./scripts/kmao.sh publish --output ./dist/meu-pacote
+```
+
+Para conferir o comando sem acessar o GitHub ou criar apenas um rascunho:
+
+```bash
+./scripts/kmao.sh publish --dry-run
+./scripts/kmao.sh publish --draft
+```
+
+Requer Python 3, Git e GitHub CLI (`gh auth login`) no WSL. Não precisa executar
+PowerShell para publicar. O comando verifica arquivos obrigatórios, versão/canal do
+manifesto e hash do ZIP; exige uma árvore Git limpa e confirma o commit no GitHub
+antes de criar a release. A assinatura é validada pelo build, conforme
+[CODE_SIGNING.md](CODE_SIGNING.md). Não substitui releases nem anexos existentes.
 
 ## Publicar uma nova versão para testes
 

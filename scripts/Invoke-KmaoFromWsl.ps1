@@ -7,7 +7,9 @@ param(
     [string]$PublicKeyPath,
     [string]$OutputDirectory,
     [string]$IsccPath,
-    [switch]$SkipInstaller
+    [switch]$SkipInstaller,
+    [string]$AuthenticodeSigner,
+    [switch]$AllowUnsigned
 )
 $ErrorActionPreference = 'Stop'
 try {
@@ -27,6 +29,7 @@ try {
         test {
             & (Join-Path $RepositoryPath 'tests/Test-Core.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-Updates.ps1')
+            & (Join-Path $RepositoryPath 'tests/Test-Authenticode.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-Lifecycle.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-Desktop.ps1')
             & (Join-Path $RepositoryPath 'tests/Test-WslBuild.ps1')
@@ -42,7 +45,7 @@ try {
         }
         build {
             if (!$OutputDirectory) { $OutputDirectory = Join-Path $RepositoryPath 'dist/release' }
-            & (Join-Path $RepositoryPath 'scripts/Build-KmaoRelease.ps1') -PrivateKeyPath $PrivateKeyPath -PublicKeyPath $PublicKeyPath -OutputDirectory $OutputDirectory -IsccPath $IsccPath -SkipInstaller:$SkipInstaller
+            & (Join-Path $RepositoryPath 'scripts/Build-KmaoRelease.ps1') -PrivateKeyPath $PrivateKeyPath -PublicKeyPath $PublicKeyPath -OutputDirectory $OutputDirectory -IsccPath $IsccPath -SkipInstaller:$SkipInstaller -AuthenticodeSigner $AuthenticodeSigner -AllowUnsigned:$AllowUnsigned
         }
         export {
             if (!$OutputDirectory) { $OutputDirectory = Join-Path $RepositoryPath 'dist/kmao-portable' }

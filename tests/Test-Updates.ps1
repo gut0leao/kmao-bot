@@ -21,7 +21,7 @@ try {
     Assert-Throws { & (Join-Path $repo 'scripts/New-KmaoSigningKey.ps1') -PrivateKeyPath $private -PublicKeyPath $public } 'overwrite'
     Assert-Throws { & (Join-Path $repo 'scripts/New-KmaoSigningKey.ps1') -PrivateKeyPath (Join-Path $repo 'forbidden.private.xml') -PublicKeyPath (Join-Path $temporary 'other-public.xml') } 'outside the repository'
     $release = Join-Path $temporary 'release'
-    & (Join-Path $repo 'scripts/Build-KmaoRelease.ps1') -PrivateKeyPath $private -PublicKeyPath $public -OutputDirectory $release -SkipInstaller
+    & (Join-Path $repo 'scripts/Build-KmaoRelease.ps1') -PrivateKeyPath $private -PublicKeyPath $public -OutputDirectory $release -SkipInstaller -AllowUnsigned
     $manifestPath = Join-Path $release 'kmao-manifest.json'
     $signaturePath = Join-Path $release 'kmao-manifest.sig'
     $original = [IO.File]::ReadAllText($manifestPath)

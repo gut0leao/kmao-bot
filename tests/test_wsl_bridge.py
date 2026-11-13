@@ -44,7 +44,7 @@ class WslBridgeTests(unittest.TestCase):
         result = self.run_bridge(
             "build", "--output", "release folder", "--private-key", "/mnt/c/key folder/private.xml",
             "--public-key", "/mnt/c/key folder/public.xml", "--iscc", "/mnt/c/Program Files/ISCC.exe",
-            "--skip-installer",
+            "--skip-installer", "--allow-unsigned", "--authenticode-signer", "/mnt/c/sign folder/Provider.ps1",
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         args = json.loads(self.capture.read_text())
@@ -53,9 +53,11 @@ class WslBridgeTests(unittest.TestCase):
             "-PrivateKeyPath": "WIN:/mnt/c/key folder/private.xml",
             "-PublicKeyPath": "WIN:/mnt/c/key folder/public.xml",
             "-IsccPath": "WIN:/mnt/c/Program Files/ISCC.exe",
+            "-AuthenticodeSigner": "WIN:/mnt/c/sign folder/Provider.ps1",
         }.items():
             self.assertEqual(args[args.index(name) + 1], value)
         self.assertIn("-SkipInstaller", args)
+        self.assertIn("-AllowUnsigned", args)
         self.assertIn("-File", args)
         self.assertNotIn("-Command", args)
 
@@ -64,7 +66,7 @@ class WslBridgeTests(unittest.TestCase):
         self.assertEqual(self.run_bridge("test").returncode, 23)
 
     def test_invalid_arguments_do_not_invoke_powershell(self):
-        for arguments in [("unknown",), ("build", "--output"), ("test", "--skip-installer"), ("doctor", "--output", "x")]:
+        for arguments in [("unknown",), ("build", "--output"), ("test", "--skip-installer"), ("test", "--allow-unsigned"), ("test", "--authenticode-signer", "x"), ("doctor", "--output", "x")]:
             self.assertEqual(self.run_bridge(*arguments).returncode, 2)
             self.assertFalse(self.capture.exists())
 

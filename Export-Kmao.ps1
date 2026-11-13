@@ -1,6 +1,9 @@
 # Build a portable directory and ZIP containing only application files and templates.
 [CmdletBinding()]
-param([string]$Destination = (Join-Path $PSScriptRoot 'dist/kmao-portable'))
+param(
+    [string]$Destination = (Join-Path $PSScriptRoot 'dist/kmao-portable'),
+    [switch]$SkipArchive
+)
 $ErrorActionPreference = 'Stop'
 
 $files = @(
@@ -11,7 +14,10 @@ $files = @(
     'lib/Kmao.Common.ps1', 'lib/Kmao.Windows.cs',
     'config/bot.conf.example', 'config/kmao.conf.example', 'phrases.txt',
     'INSTALLATION.md', 'TRAY_BOT.md',
+    'scripts/Publish-KmaoRelease.py', 'tests/test_publish_release.py',
     'scripts/kmao.sh', 'scripts/Invoke-KmaoFromWsl.ps1', 'scripts/Kmao.BuildTools.ps1',
+    'scripts/Kmao.Authenticode.ps1', 'scripts/Invoke-KmaoAuthenticode.ps1', 'scripts/Sign-KmaoFile.ps1',
+    'CODE_SIGNING.md', 'tests/Test-Authenticode.ps1',
     'scripts/New-KmaoSigningKey.ps1', 'scripts/Build-KmaoRelease.ps1', 'installer/Kmao.iss',
     'tests/Test-WslBuild.ps1',
     'tests/Test-Updates.ps1', 'tests/Test-Lifecycle.ps1', 'tests/fixtures/SessionWorker.ps1',
@@ -34,7 +40,7 @@ foreach ($file in $files) {
     New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination $target
 }
-Compress-Archive -Path (Join-Path $Destination '*') -DestinationPath $archive
+if (!$SkipArchive) { Compress-Archive -Path (Join-Path $Destination '*') -DestinationPath $archive }
 Write-Host "Portable directory: $Destination"
-Write-Host "Portable ZIP: $archive"
+if (!$SkipArchive) { Write-Host "Portable ZIP: $archive" }
 Write-Host 'Copy or extract the entire package, preserving the lib and config subdirectories.'

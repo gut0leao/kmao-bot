@@ -4,12 +4,25 @@ param(
     [Parameter(Mandatory = $true)][string]$PublicKeyPath,
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '../dist/release'),
     [string]$IsccPath,
-    [switch]$SkipInstaller
+    [switch]$SkipInstaller,
+    [string]$AuthenticodeSigner,
+    [switch]$AllowUnsigned
 )
 $ErrorActionPreference = 'Stop'
 $repo = [IO.Path]::GetFullPath((Resolve-Path (Join-Path $PSScriptRoot '..')).ProviderPath)
 . (Join-Path $repo 'lib/Kmao.Update.ps1')
 . (Join-Path $PSScriptRoot 'Kmao.BuildTools.ps1')
+. (Join-Path $PSScriptRoot 'Kmao.Authenticode.ps1')
+if ($AuthenticodeSigner -and $AllowUnsigned) { throw 'AuthenticodeSigner and AllowUnsigned are mutually exclusive.' }
+if (!$AuthenticodeSigner -and !$AllowUnsigned) {
+    throw 'A trusted Authenticode signer is required for release builds. Configure -AuthenticodeSigner, or use -AllowUnsigned only for development (not Smart App Control compatible).'
+}
+if ($AuthenticodeSigner) {
+    if ($env:OS -ne 'Windows_NT' -or $PSVersionTable.PSEdition -ne 'Desktop') { throw 'Authenticode release builds require Windows PowerShell 5.1. Use the WSL build bridge.' }
+    $AuthenticodeSigner = (Resolve-Path -LiteralPath $AuthenticodeSigner -ErrorAction Stop).ProviderPath
+    if ([IO.Path]::GetExtension($AuthenticodeSigner) -ne '.ps1') { throw 'AuthenticodeSigner must be a PowerShell provider script accepting -Path.' }
+}
+else { Write-Warning 'DEVELOPMENT BUILD: no Windows Authenticode signature. Do not publish for Smart App Control users.' }
 if (!$SkipInstaller) { $IsccPath = Resolve-KmaoIscc $IsccPath }
 $version = (Get-Content -LiteralPath (Join-Path $repo 'VERSION') -Raw).Trim()
 ConvertTo-KmaoVersion $version | Out-Null
@@ -25,9 +38,20 @@ try {
     $public.FromXmlString($publicXml)
     if ($rsa.KeySize -lt 3072 -or $rsa.ToXmlString($false) -cne $public.ToXmlString($false)) { throw 'Signing keys do not match or are too small.' }
     $payload = Join-Path $OutputDirectory 'payload'
-    & (Join-Path $repo 'Export-Kmao.ps1') -Destination $payload
+    & (Join-Path $repo 'Export-Kmao.ps1') -Destination $payload -SkipArchive
+    if ($env:OS -eq 'Windows_NT' -and $PSVersionTable.PSEdition -eq 'Desktop') { New-KmaoCompiledRuntime $payload }
+    if ($AuthenticodeSigner) {
+        foreach ($file in Get-ChildItem -LiteralPath $payload -File -Recurse | Where-Object { $_.Extension -in @('.ps1', '.dll', '.exe') }) {
+            if ($file.Extension -eq '.ps1') {
+                # BOM keeps signed UTF-8 scripts unambiguous in Windows PowerShell 5.1.
+                [IO.File]::WriteAllText($file.FullName, [IO.File]::ReadAllText($file.FullName), [Text.UTF8Encoding]::new($true))
+            }
+            Invoke-KmaoAuthenticodeSigner $file.FullName $AuthenticodeSigner
+        }
+    }
     $assetName = "kmao-$version.zip"
-    Move-Item -LiteralPath "$payload.zip" -Destination (Join-Path $OutputDirectory $assetName)
+    # Hash and archive the final, signed bytes. No payload mutation is allowed after this.
+    Compress-Archive -Path (Join-Path $payload '*') -DestinationPath (Join-Path $OutputDirectory $assetName)
     $files = [ordered]@{}
     foreach ($file in Get-ChildItem -LiteralPath $payload -File -Recurse | Sort-Object FullName) {
         $name = $file.FullName.Substring($payload.Length + 1).Replace('\', '/')
@@ -51,15 +75,29 @@ try {
     Read-KmaoSignedManifest $manifestPath (Join-Path $OutputDirectory 'kmao-manifest.sig') $PublicKeyPath | Out-Null
     $installerSource = Join-Path $OutputDirectory 'installer-source'
     New-Item -ItemType Directory -Path $installerSource | Out-Null
-    Copy-Item -LiteralPath (Join-Path $repo 'Start-Kmao.ps1') -Destination $installerSource
+    Copy-Item -LiteralPath (Join-Path $payload 'Start-Kmao.ps1') -Destination $installerSource
     [IO.File]::WriteAllText((Join-Path $installerSource 'update-public-key.xml'), $public.ToXmlString($false), [Text.UTF8Encoding]::new($false))
     Write-KmaoState $installerSource current $version
     $versions = Join-Path $installerSource 'versions'
     New-Item -ItemType Directory -Path $versions | Out-Null
     Copy-Item -LiteralPath $payload -Destination (Join-Path $versions $version) -Recurse
     if (!$SkipInstaller) {
-        & $IsccPath "/DAppVersion=$version" "/DSourceDir=$installerSource" "/DOutputDir=$OutputDirectory" (Join-Path $repo 'installer/Kmao.iss')
+        $compilerArguments = @("/DAppVersion=$version", "/DSourceDir=$installerSource", "/DOutputDir=$OutputDirectory")
+        if ($AuthenticodeSigner) {
+            New-Item -ItemType Directory -Path (Join-Path $OutputDirectory 'signed-uninstaller') | Out-Null
+            $compilerArguments += '/DAuthenticode=1'
+            $compilerArguments += '/Skmao=' + (Get-KmaoInnoSignCommand $AuthenticodeSigner)
+        }
+        $compilerArguments += (Join-Path $repo 'installer/Kmao.iss')
+        & $IsccPath @compilerArguments
         if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
+        if ($AuthenticodeSigner) {
+            Assert-KmaoAuthenticodeSignature (Join-Path $OutputDirectory "kmao-setup-$version.exe")
+            $uninstallers = @(Get-ChildItem -LiteralPath (Join-Path $OutputDirectory 'signed-uninstaller') -Filter '*.exe')
+            if (!$uninstallers.Count) { throw 'No signed uninstaller was produced.' }
+            foreach ($file in $uninstallers) { Assert-KmaoAuthenticodeSignature $file.FullName }
+        }
     }
 } finally { $rsa.Dispose(); $public.Dispose() }
+if ($AllowUnsigned) { Write-Warning 'This output is a development build without Authenticode.' }
 Write-Host "Release $version built in $OutputDirectory. Nothing was published."

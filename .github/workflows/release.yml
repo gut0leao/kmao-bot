@@ -20,8 +20,18 @@ jobs:
         run: |
           ./tests/Test-Core.ps1
           ./tests/Test-Updates.ps1
+          ./tests/Test-Authenticode.ps1
           ./tests/Test-Lifecycle.ps1
           ./tests/Test-Desktop.ps1
+      - name: Require Windows publisher signing
+        shell: powershell
+        env:
+          KMAO_AUTHENTICODE_SIGNER: ${{ vars.KMAO_AUTHENTICODE_SIGNER }}
+        run: |
+          # Add the selected provider's authentication/setup before this step.
+          if (!$env:KMAO_AUTHENTICODE_SIGNER -or !(Test-Path -LiteralPath $env:KMAO_AUTHENTICODE_SIGNER -PathType Leaf)) {
+            throw 'Configure an Authenticode provider and KMAO_AUTHENTICODE_SIGNER before publishing. See CODE_SIGNING.md.'
+          }
       - name: Prepare release signing keys
         shell: pwsh
         env:
@@ -33,10 +43,12 @@ jobs:
           [IO.File]::WriteAllBytes("$env:RUNNER_TEMP/kmao-public.xml", [Convert]::FromBase64String($env:PUBLIC_KEY))
       - name: Build signed packages and installer
         shell: powershell
+        env:
+          KMAO_AUTHENTICODE_SIGNER: ${{ vars.KMAO_AUTHENTICODE_SIGNER }}
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (!(Test-Path $iscc)) { throw 'Inno Setup 6 is required on the Windows runner.' }
-          ./scripts/Build-KmaoRelease.ps1 -PrivateKeyPath "$env:RUNNER_TEMP/kmao-private.xml" -PublicKeyPath "$env:RUNNER_TEMP/kmao-public.xml" -IsccPath $iscc
+          ./scripts/Build-KmaoRelease.ps1 -PrivateKeyPath "$env:RUNNER_TEMP/kmao-private.xml" -PublicKeyPath "$env:RUNNER_TEMP/kmao-public.xml" -IsccPath $iscc -AuthenticodeSigner $env:KMAO_AUTHENTICODE_SIGNER
       - uses: actions/upload-artifact@v4
         with:
           name: kmao-release

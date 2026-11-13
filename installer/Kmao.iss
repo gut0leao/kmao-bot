@@ -28,6 +28,11 @@ AppMutex=Local\Kmao.Component.bot,Local\Kmao.Component.logger,Local\Kmao.Update
 SetupMutex=Local\Kmao.Install
 UninstallDisplayName=KMAO Bot
 LicenseFile=..\LICENSE
+#ifdef Authenticode
+SignTool=kmao
+SignedUninstaller=yes
+SignedUninstallerDir={#OutputDir}\signed-uninstaller
+#endif
 
 [Files]
 Source: "{#SourceDir}\Start-Kmao.ps1"; DestDir: "{app}"; Flags: ignoreversion
@@ -59,7 +64,7 @@ procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssInstall then
     if FileExists(ExpandConstant('{app}\current.json')) then
-      if not FileCopy(ExpandConstant('{app}\current.json'), ExpandConstant('{app}\previous.json'), False) then
+      if not CopyFile(ExpandConstant('{app}\current.json'), ExpandConstant('{app}\previous.json'), False) then
         RaiseException('Could not preserve the previous installation state.');
   if CurStep = ssPostInstall then
     DeleteFile(ExpandConstant('{app}\pending.json'));

@@ -10,8 +10,10 @@ repositório pelo WSL, incluindo código, criptografia, empacotamento, continuid
 sem conexão/recusa, recuperação e eventos/mutexes entre processos. A compilação do
 `.exe` também foi validada no Windows via WSL. Os hooks em desktop e a validação
 manual completa de instalação, atualização e desinstalação seguem como critérios
-de aceitação para os testes com convidados. Chaves de produção,
-certificado Authenticode e primeira Release não foram configurados ou publicados.
+de aceitação para os testes com convidados. A identidade RSA de produção e
+as releases iniciais já existem. A 0.3.2 prepara Authenticode, mas a emissão do
+certificado e a validação com Smart App Control ativo ainda estão pendentes.
+Veja [CODE_SIGNING.md](CODE_SIGNING.md).
 A mudança de esquema de configuração é rejeitada; a migração permanece futura.
 
 ## Público e distribuição
